@@ -49,4 +49,6 @@ COPY --from=builder /app/package*.json ./
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
-CMD ["npm", "start"]
+
+# Run migrations automatically on startup, then start the server
+CMD ["sh", "-c", "npx prisma migrate deploy && npm start"]

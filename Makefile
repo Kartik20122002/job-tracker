@@ -14,6 +14,9 @@ logs:
 	docker compose logs -f app
 
 migrate:
+	docker compose exec app npx prisma migrate deploy
+
+migrate-dev:
 	docker compose exec app npx prisma migrate dev
 
 seed:
