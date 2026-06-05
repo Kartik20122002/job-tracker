@@ -13,6 +13,8 @@ import { StatusTimeline } from "@/features/applications/components/StatusTimelin
 import { ResumeSection } from "@/features/applications/components/ResumeSection";
 import { DeleteApplicationButton } from "@/features/applications/components/DeleteApplicationButton";
 import { getApplicationById } from "@/server/queries/applications";
+import { getEmailActivitiesForApplication, getGmailConnectionStatus } from "@/server/queries/gmail";
+import { ApplicationEmailSection } from "@/features/gmail/components/ApplicationEmailSection";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
@@ -32,7 +34,11 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 export default async function ApplicationDetailPage({ params }: PageProps) {
   const { id } = await params;
   const session = await auth();
-  const application = await getApplicationById(id, session!.user.id);
+  const [application, emailActivities, gmail] = await Promise.all([
+    getApplicationById(id, session!.user.id),
+    getEmailActivitiesForApplication(id),
+    getGmailConnectionStatus(session!.user.id),
+  ]);
 
   if (!application) notFound();
 
@@ -246,6 +252,20 @@ export default async function ApplicationDetailPage({ params }: PageProps) {
         <CardContent>
           <Separator className="mb-4" />
           <StatusTimeline history={application.statusHistory} />
+        </CardContent>
+      </Card>
+
+      {/* Row 4: Recruiter Emails */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Recruiter Emails</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ApplicationEmailSection
+            applicationId={id}
+            activities={emailActivities}
+            gmailConnected={gmail.isConnected}
+          />
         </CardContent>
       </Card>
     </div>

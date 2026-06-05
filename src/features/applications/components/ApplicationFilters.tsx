@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -45,12 +45,17 @@ export function ApplicationFilters() {
     [pathname, router, searchParams]
   );
 
+  // Keep a ref so the search debounce always calls the latest updateParam
+  // without listing it as a dependency (avoids push→searchParams→updateParam→push loop)
+  const updateParamRef = useRef(updateParam);
+  useEffect(() => { updateParamRef.current = updateParam; });
+
   useEffect(() => {
     const timer = setTimeout(() => {
-      updateParam("search", search || null);
+      updateParamRef.current("search", search || null);
     }, 300);
     return () => clearTimeout(timer);
-  }, [search, updateParam]);
+  }, [search]);
 
   const hasFilters =
     searchParams.get("search") ||
@@ -77,7 +82,7 @@ export function ApplicationFilters() {
       </div>
 
       <Select
-        value={searchParams.get("status") ?? ""}
+        value={searchParams.get("status") ?? "all"}
         onValueChange={(v) => updateParam("status", v === "all" ? null : v)}
       >
         <SelectTrigger className="w-44">
@@ -94,7 +99,7 @@ export function ApplicationFilters() {
       </Select>
 
       <Select
-        value={searchParams.get("source") ?? ""}
+        value={searchParams.get("source") ?? "all"}
         onValueChange={(v) => updateParam("source", v === "all" ? null : v)}
       >
         <SelectTrigger className="w-36">

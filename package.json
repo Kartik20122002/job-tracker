@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "docker-dev": "docker compose up postgres -d --wait && npx prisma migrate deploy && npx prisma generate && next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

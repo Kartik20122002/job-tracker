@@ -5,15 +5,28 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/StatusBadge";
 import { StatusBreakdownChart } from "@/features/dashboard/components/StatusBreakdownChart";
+import { RecruiterUpdatesWidget } from "@/features/gmail/components/RecruiterUpdatesWidget";
 import { getDashboardData } from "@/server/queries/applications";
+import { getGmailConnectionStatus, getRecentEmailActivities, getTotalMatchedEmails } from "@/server/queries/gmail";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import type { Application } from "@/generated/prisma/client";
 
 export default async function DashboardPage() {
   const session = await auth();
-  const { summary, statusCounts, recentApplications, upcomingInterviews } =
-    await getDashboardData(session!.user.id);
+  const userId = session!.user.id;
+
+  const [
+    { summary, statusCounts, recentApplications, upcomingInterviews },
+    gmail,
+    recentEmails,
+    totalMatched,
+  ] = await Promise.all([
+    getDashboardData(userId),
+    getGmailConnectionStatus(userId),
+    getRecentEmailActivities(userId, 5),
+    getTotalMatchedEmails(userId),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -134,6 +147,21 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <StatusBreakdownChart data={statusCounts} />
+          </CardContent>
+        </Card>
+
+        {/* Recruiter Updates */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Recruiter Updates</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <RecruiterUpdatesWidget
+              isConnected={gmail.isConnected}
+              totalMatched={totalMatched}
+              lastSyncAt={gmail.lastSync?.completedAt ?? null}
+              recentEmails={recentEmails}
+            />
           </CardContent>
         </Card>
 
