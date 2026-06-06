@@ -42,6 +42,13 @@ export default async function ApplicationDetailPage({ params }: PageProps) {
 
   if (!application) notFound();
 
+  const allowedEmails = process.env.RESUME_UPLOAD_ALLOWED_EMAILS ?? "";
+  const isUploadAllowed = allowedEmails
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean)
+    .includes((session!.user.email ?? "").toLowerCase());
+
   const hasNotes = !!application.notes;
   const hasFeedback = !!application.interviewFeedback;
 
@@ -208,6 +215,7 @@ export default async function ApplicationDetailPage({ params }: PageProps) {
                 resumeFileName={application.resumeFileName}
                 resumeFilePath={application.resumeFilePath}
                 resumeUploadDate={application.resumeUploadDate}
+                isUploadAllowed={isUploadAllowed}
               />
             </CardContent>
           </Card>

@@ -177,6 +177,7 @@ interface GmailPayload {
 
 export interface ParsedEmailFull extends ParsedEmail {
   body: string;
+  bodyHtml: string | null;
   gmailWebUrl: string;
 }
 
@@ -198,6 +199,7 @@ export async function getGmailMessageFull(
   const { sender, senderEmail } = parseFromHeader(fromHeader);
 
   const body = extractTextFromPayload(message.payload);
+  const bodyHtml = extractHtmlFromPayload(message.payload);
 
   return {
     messageId: message.id,
@@ -208,6 +210,7 @@ export async function getGmailMessageFull(
     snippet: message.snippet ?? "",
     receivedAt: new Date(parseInt(message.internalDate)),
     body,
+    bodyHtml,
     gmailWebUrl: `https://mail.google.com/mail/u/0/#all/${threadId}`,
   };
 }
@@ -250,6 +253,30 @@ function extractTextFromPayload(payload: GmailPayload): string {
   }
 
   return "";
+}
+
+function extractHtmlFromPayload(payload: GmailPayload): string | null {
+  if (!payload) return null;
+
+  if (payload.mimeType === "text/html" && payload.body?.data) {
+    return Buffer.from(payload.body.data, "base64url").toString("utf-8");
+  }
+
+  if (payload.parts) {
+    for (const part of payload.parts) {
+      if (part.mimeType === "text/html" && part.body?.data) {
+        return Buffer.from(part.body.data, "base64url").toString("utf-8");
+      }
+    }
+    for (const part of payload.parts) {
+      if (part.mimeType.startsWith("multipart/")) {
+        const html = extractHtmlFromPayload(part);
+        if (html) return html;
+      }
+    }
+  }
+
+  return null;
 }
 
 function stripHtml(html: string): string {

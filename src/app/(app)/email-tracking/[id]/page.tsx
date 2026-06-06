@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { getEmailActivityById } from "@/server/queries/gmail";
 import { getGmailMessageFull, refreshAccessToken } from "@/lib/gmail";
 import { supabaseAdmin } from "@/lib/supabase";
+import { EmailBodyFrame } from "@/features/gmail/components/EmailBodyFrame";
 import { formatDate, decodeHtmlEntities, cn } from "@/lib/utils";
 
 const MATCHED_BY_LABEL: Record<string, string> = {
@@ -32,6 +33,7 @@ export default async function EmailDetailPage({ params }: PageProps) {
 
   // Attempt to fetch full body server-side — fail gracefully if token issues
   let body: string | null = null;
+  let bodyHtml: string | null = null;
   let gmailWebUrl = `https://mail.google.com/mail/u/0/#all/${activity.gmailThreadId}`;
 
   try {
@@ -51,6 +53,7 @@ export default async function EmailDetailPage({ params }: PageProps) {
       const full = await getGmailMessageFull(accessToken, activity.gmailMessageId, activity.gmailThreadId);
       if (full) {
         body = full.body || null;
+        bodyHtml = full.bodyHtml;
         gmailWebUrl = full.gmailWebUrl;
       }
     }
@@ -86,15 +89,16 @@ export default async function EmailDetailPage({ params }: PageProps) {
           <h1 className="text-lg font-semibold leading-snug">{activity.subject}</h1>
 
           <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
-            <span>
-              <span className="font-medium text-foreground">From</span>{" "}
+            <span className="flex items-center gap-2">
+              <span className="font-medium text-foreground">From:</span>
               {activity.sender !== activity.senderEmail
-                ? `${activity.sender} <${activity.senderEmail}>`
-                : activity.senderEmail}
+                ?  <span>{activity.sender}, <span className="opacity-50">{activity.senderEmail}</span></span>
+                : <span>{activity.senderEmail}</span>
+                }
             </span>
-            <span>
-              <span className="font-medium text-foreground">Date</span>{" "}
-              {formatDate(activity.receivedAt)}
+            <span className="flex gap-2 items-center">
+              <span className="font-medium text-foreground">Date:</span>
+              <span>{formatDate(activity.receivedAt)}</span>
             </span>
           </div>
 
@@ -114,7 +118,9 @@ export default async function EmailDetailPage({ params }: PageProps) {
       {/* Email body */}
       <Card>
         <CardContent className="pt-6">
-          {body ? (
+          {bodyHtml ? (
+            <EmailBodyFrame html={bodyHtml} />
+          ) : body ? (
             <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-foreground">
               {body}
             </pre>

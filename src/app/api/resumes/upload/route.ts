@@ -13,6 +13,15 @@ export async function POST(request: Request) {
   const formData = await request.formData();
   const file = formData.get("file") as File | null;
 
+  const allowedEmails = process.env.RESUME_UPLOAD_ALLOWED_EMAILS ?? "";
+  const allowed = allowedEmails
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  if (!allowed.includes((session.user.email ?? "").toLowerCase())) {
+    return Response.json({ error: "Resume upload is not enabled for your account" }, { status: 403 });
+  }
+
   if (!file) {
     return Response.json({ error: "No file provided" }, { status: 400 });
   }

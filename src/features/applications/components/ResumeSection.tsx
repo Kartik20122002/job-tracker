@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { Download, Eye, FileText, Loader2, Upload } from "lucide-react";
+import { Download, Eye, FileText, Loader2, Lock, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { updateApplicationResume } from "@/server/actions/applications";
 import { formatDate } from "@/lib/utils";
@@ -12,6 +12,7 @@ interface ResumeSectionProps {
   resumeFileName?: string | null;
   resumeFilePath?: string | null;
   resumeUploadDate?: Date | null;
+  isUploadAllowed?: boolean;
 }
 
 export function ResumeSection({
@@ -19,6 +20,7 @@ export function ResumeSection({
   resumeFileName,
   resumeFilePath,
   resumeUploadDate,
+  isUploadAllowed = false,
 }: ResumeSectionProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -109,20 +111,32 @@ export function ResumeSection({
         <p className="text-sm text-muted-foreground">No resume uploaded yet.</p>
       )}
 
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => fileInputRef.current?.click()}
-        disabled={uploading}
-      >
-        {uploading ? (
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        ) : (
-          <Upload className="mr-2 h-4 w-4" />
-        )}
-        {resumeFilePath ? "Replace Resume" : "Upload Resume"}
-      </Button>
-      <p className="text-xs text-muted-foreground">PDF only, max 10MB</p>
+      {isUploadAllowed ? (
+        <>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+          >
+            {uploading ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Upload className="mr-2 h-4 w-4" />
+            )}
+            {resumeFilePath ? "Replace Resume" : "Upload Resume"}
+          </Button>
+          <p className="text-xs text-muted-foreground">PDF only, max 1 MB</p>
+        </>
+      ) : (
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" disabled>
+            <Lock className="mr-2 h-4 w-4" />
+            {resumeFilePath ? "Replace Resume" : "Upload Resume"}
+          </Button>
+          <p className="text-xs text-muted-foreground">Resume upload is not enabled for your account</p>
+        </div>
+      )}
     </div>
   );
 }
