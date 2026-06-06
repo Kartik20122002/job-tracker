@@ -40,6 +40,7 @@ const STATUS_COLORS: Record<ApplicationStatus, string> = {
   Accepted: "#22c55e",
   Rejected: "#ef4444",
   Withdrawn: "#f97316",
+  Referral_Asked: "#eab308",
 };
 
 interface AnalyticsData {
