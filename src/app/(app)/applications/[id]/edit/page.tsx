@@ -43,7 +43,7 @@ export default async function EditApplicationPage({ params }: PageProps) {
           country: application.country,
           location: application.location ?? undefined,
           jobLink: application.jobLink ?? undefined,
-          jobDescLink: application.jobDescLink ?? undefined,
+          companyType: application.companyType ?? "",
           source: application.source,
           status: application.status,
           applicationType: application.applicationType,

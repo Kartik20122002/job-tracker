@@ -33,6 +33,7 @@ export async function GET() {
     "Recruiter Name": app.recruiterName ?? "",
     "Recruiter Email": app.recruiterEmail ?? "",
     "Job Link": app.jobLink ?? "",
+    "Company Type": app.companyType ?? "",
   }));
 
   const csv = unparse(rows);

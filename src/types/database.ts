@@ -15,7 +15,7 @@ export type Application = {
   country: string;
   location: string | null;
   jobLink: string | null;
-  jobDescLink: string | null;
+  companyType: string | null;
   source: ApplicationSource;
   status: ApplicationStatus;
   applicationType: ApplicationType;

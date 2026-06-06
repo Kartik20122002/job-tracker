@@ -53,6 +53,12 @@ const TYPE_OPTIONS = Object.values(ApplicationType).map((v) => ({
 
 const CURRENCY_OPTIONS = Object.values(Currency).map((v) => ({ value: v, label: v }));
 
+const COMPANY_TYPE_OPTIONS = [
+  { value: "Product Based", label: "Product Based" },
+  { value: "Service Based", label: "Service Based" },
+  { value: "Other", label: "Other" },
+];
+
 interface ApplicationFormProps {
   applicationId?: string;
   defaultValues?: Partial<ApplicationFormValues>;
@@ -115,7 +121,7 @@ export function ApplicationForm({
       country: "India",
       location: "",
       jobLink: "",
-      jobDescLink: "",
+      companyType: "",
       source: ApplicationSource.Other,
       status: ApplicationStatus.Applied,
       applicationType: ApplicationType.Onsite,
@@ -272,11 +278,22 @@ export function ApplicationForm({
                 />
                 <FormField
                   control={form.control}
-                  name="jobDescLink"
+                  name="companyType"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Job Description Link</FormLabel>
-                      <FormControl><Input placeholder="https://..." {...field} /></FormControl>
+                      <FormLabel>Company Type</FormLabel>
+                      <Select
+                        onValueChange={(v) => field.onChange(v === "__none__" ? "" : v)}
+                        value={!field.value ? "__none__" : field.value}
+                      >
+                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          <SelectItem value="__none__">—</SelectItem>
+                          {COMPANY_TYPE_OPTIONS.map((o) => (
+                            <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}

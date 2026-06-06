@@ -12,18 +12,18 @@ export const ApplicationSchema = z.object({
   country: z.string().min(1, "Country is required").default("India"),
   location: z.string().optional(),
   jobLink: z.string().url("Invalid URL").optional().or(z.literal("")),
-  jobDescLink: z.string().url("Invalid URL").optional().or(z.literal("")),
-  source: z.nativeEnum(ApplicationSource).default(ApplicationSource.Other),
-  status: z.nativeEnum(ApplicationStatus).default(ApplicationStatus.Applied),
+  companyType: z.string().optional(),
+  source: z.enum(ApplicationSource).default(ApplicationSource.Other),
+  status: z.enum(ApplicationStatus).default(ApplicationStatus.Started),
 
   applicationType: z
-    .nativeEnum(ApplicationType)
+    .enum(ApplicationType)
     .default(ApplicationType.Onsite),
   visaSponsorship: z.boolean().default(false),
   relocation: z.boolean().default(false),
   referral: z.boolean().default(false),
   targetSalary: z.string().optional(),
-  currency: z.nativeEnum(Currency).default(Currency.INR),
+  currency: z.enum(Currency).default(Currency.INR),
 
   appliedDate: z.coerce.date().default(() => new Date()),
   nextInterviewDate: z.coerce.date().optional().nullable(),

@@ -26,7 +26,7 @@ export async function createApplication(
     return { success: false, error: parsed.error.issues[0].message };
   }
 
-  const { jobLink, jobDescLink, recruiterEmail, ...rest } = parsed.data;
+  const { jobLink, companyType, recruiterEmail, ...rest } = parsed.data;
 
   const { data: app, error } = await supabaseAdmin
     .from("Application")
@@ -37,7 +37,7 @@ export async function createApplication(
       offerDate: rest.offerDate?.toISOString() ?? null,
       joiningDate: rest.joiningDate?.toISOString() ?? null,
       jobLink: jobLink || null,
-      jobDescLink: jobDescLink || null,
+      companyType: companyType || null,
       recruiterEmail: recruiterEmail || null,
       userId,
     })
@@ -76,7 +76,7 @@ export async function updateApplication(
     return { success: false, error: parsed.error.issues[0].message };
   }
 
-  const { jobLink, jobDescLink, recruiterEmail, ...rest } = parsed.data;
+  const { jobLink, companyType, recruiterEmail, ...rest } = parsed.data;
 
   if (rest.status !== existing.status) {
     await supabaseAdmin
@@ -93,7 +93,7 @@ export async function updateApplication(
       offerDate: rest.offerDate?.toISOString() ?? null,
       joiningDate: rest.joiningDate?.toISOString() ?? null,
       jobLink: jobLink || null,
-      jobDescLink: jobDescLink || null,
+      companyType: companyType || null,
       recruiterEmail: recruiterEmail || null,
     })
     .eq("id", id);
@@ -149,7 +149,7 @@ export async function duplicateApplication(id: string): Promise<ActionResult<{ i
       country: existing.country,
       location: existing.location,
       jobLink: existing.jobLink,
-      jobDescLink: existing.jobDescLink,
+      companyType: existing.companyType,
       source: existing.source,
       status: ApplicationStatus.Applied,
       applicationType: existing.applicationType,

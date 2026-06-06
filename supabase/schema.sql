@@ -80,7 +80,7 @@ CREATE TABLE "Application" (
   "country"           TEXT               NOT NULL DEFAULT 'India',
   "location"          TEXT,
   "jobLink"           TEXT,
-  "jobDescLink"       TEXT,
+  "companyType"       TEXT,
   "source"            "ApplicationSource" NOT NULL DEFAULT 'Other',
   "status"            "ApplicationStatus" NOT NULL DEFAULT 'Applied',
   "applicationType"   "ApplicationType"   NOT NULL DEFAULT 'Onsite',

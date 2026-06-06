@@ -107,21 +107,14 @@ export default async function ApplicationDetailPage({ params }: PageProps) {
             <InfoRow label="Country" value={application.country} />
             <InfoRow label="Location" value={application.location} />
             <InfoRow label="Source" value={application.source.replace(/_/g, " ")} />
+            <InfoRow label="Company Type" value={application.companyType} />
             <InfoRow label="Applied On" value={formatDate(application.appliedDate)} />
-            {(application.jobLink || application.jobDescLink) && (
+            {application.jobLink && (
               <div className="flex flex-col gap-1 pt-1">
-                {application.jobLink && (
-                  <a href={application.jobLink} target="_blank" rel="noopener noreferrer"
-                    className="text-sm text-primary hover:underline flex items-center gap-1">
-                    <ExternalLink className="h-3 w-3" /> Job Posting
-                  </a>
-                )}
-                {application.jobDescLink && (
-                  <a href={application.jobDescLink} target="_blank" rel="noopener noreferrer"
-                    className="text-sm text-primary hover:underline flex items-center gap-1">
-                    <ExternalLink className="h-3 w-3" /> Job Description
-                  </a>
-                )}
+                <a href={application.jobLink} target="_blank" rel="noopener noreferrer"
+                  className="text-sm text-primary hover:underline flex items-center gap-1">
+                  <ExternalLink className="h-3 w-3" /> Job Posting
+                </a>
               </div>
             )}
           </CardContent>
