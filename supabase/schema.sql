@@ -13,7 +13,8 @@ CREATE TYPE "ApplicationStatus" AS ENUM (
   'Offer_Received',
   'Accepted',
   'Rejected',
-  'Withdrawn'
+  'Withdrawn',
+  'Referral_Asked'
 );
 
 CREATE TYPE "ApplicationSource" AS ENUM (

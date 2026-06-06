@@ -12,6 +12,7 @@ export const ApplicationStatus = {
   Accepted: "Accepted",
   Rejected: "Rejected",
   Withdrawn: "Withdrawn",
+  Referral_Asked: "Referral_Asked",
 } as const;
 export type ApplicationStatus = (typeof ApplicationStatus)[keyof typeof ApplicationStatus];
 
