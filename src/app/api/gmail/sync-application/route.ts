@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { supabaseAdmin } from "@/lib/supabase";
 import { refreshAccessToken, searchGmailMessages, getGmailMessage, GmailApiError } from "@/lib/gmail";
 import { matchEmailToApp, buildMaps } from "@/app/api/gmail/sync/route";
 
@@ -11,13 +11,21 @@ export async function POST(request: NextRequest) {
   const { applicationId } = await request.json();
   if (!applicationId) return NextResponse.json({ error: "applicationId required" }, { status: 400 });
 
-  const application = await prisma.application.findFirst({
-    where: { id: applicationId, userId: session.user.id },
-    select: { id: true, company: true, position: true, recruiterEmail: true },
-  });
+  const { data: application } = await supabaseAdmin
+    .from("Application")
+    .select("id, company, position, recruiterEmail")
+    .eq("id", applicationId)
+    .eq("userId", session.user.id)
+    .single();
+
   if (!application) return NextResponse.json({ error: "Application not found" }, { status: 404 });
 
-  const connection = await prisma.gmailConnection.findUnique({ where: { userId: session.user.id } });
+  const { data: connection } = await supabaseAdmin
+    .from("GmailConnection")
+    .select("accessToken, refreshToken")
+    .eq("userId", session.user.id)
+    .single();
+
   if (!connection) return NextResponse.json({ error: "Gmail not connected" }, { status: 400 });
 
   const query = application.recruiterEmail?.trim()
@@ -26,12 +34,14 @@ export async function POST(request: NextRequest) {
 
   try {
     const accessToken = await refreshAccessToken(connection.refreshToken);
-    await prisma.gmailConnection.update({ where: { userId: session.user.id }, data: { accessToken } });
+    await supabaseAdmin
+      .from("GmailConnection")
+      .update({ accessToken })
+      .eq("userId", session.user.id);
 
     const stubs = await searchGmailMessages(accessToken, query, 50);
     const maps = buildMaps([application]);
 
-    // Fetch all message details in parallel
     const results = await Promise.all(
       stubs.map(async (stub) => {
         const parsed = await getGmailMessage(accessToken, stub.id);
@@ -46,7 +56,7 @@ export async function POST(request: NextRequest) {
           senderEmail: parsed.senderEmail,
           subject: parsed.subject,
           snippet: parsed.snippet,
-          receivedAt: parsed.receivedAt,
+          receivedAt: parsed.receivedAt.toISOString(),
           matchedBy: match.matchedBy,
         };
       })
@@ -56,8 +66,11 @@ export async function POST(request: NextRequest) {
 
     let newCount = 0;
     if (toCreate.length > 0) {
-      const result = await prisma.emailActivity.createMany({ data: toCreate, skipDuplicates: true });
-      newCount = result.count;
+      const { data: inserted } = await supabaseAdmin
+        .from("EmailActivity")
+        .upsert(toCreate, { onConflict: "gmailMessageId", ignoreDuplicates: true })
+        .select("id");
+      newCount = inserted?.length ?? 0;
     }
 
     return NextResponse.json({ newCount, query });

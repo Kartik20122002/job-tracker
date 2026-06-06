@@ -7,11 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { getEmailActivityById } from "@/server/queries/gmail";
-import { getGmailMessageFull } from "@/lib/gmail";
-import { prisma } from "@/lib/db";
-import { refreshAccessToken } from "@/lib/gmail";
-import { formatDate } from "@/lib/utils";
-import { cn } from "@/lib/utils";
+import { getGmailMessageFull, refreshAccessToken } from "@/lib/gmail";
+import { supabaseAdmin } from "@/lib/supabase";
+import { formatDate, decodeHtmlEntities, cn } from "@/lib/utils";
 
 const MATCHED_BY_LABEL: Record<string, string> = {
   RECRUITER_EMAIL: "Recruiter email",
@@ -37,17 +35,18 @@ export default async function EmailDetailPage({ params }: PageProps) {
   let gmailWebUrl = `https://mail.google.com/mail/u/0/#all/${activity.gmailThreadId}`;
 
   try {
-    const connection = await prisma.gmailConnection.findUnique({
-      where: { userId: session!.user.id },
-      select: { accessToken: true, refreshToken: true },
-    });
+    const { data: connection } = await supabaseAdmin
+      .from("GmailConnection")
+      .select("accessToken, refreshToken")
+      .eq("userId", session!.user.id)
+      .single();
 
     if (connection) {
       const accessToken = await refreshAccessToken(connection.refreshToken);
-      await prisma.gmailConnection.update({
-        where: { userId: session!.user.id },
-        data: { accessToken },
-      });
+      await supabaseAdmin
+        .from("GmailConnection")
+        .update({ accessToken })
+        .eq("userId", session!.user.id);
 
       const full = await getGmailMessageFull(accessToken, activity.gmailMessageId, activity.gmailThreadId);
       if (full) {
@@ -60,7 +59,7 @@ export default async function EmailDetailPage({ params }: PageProps) {
   }
 
   return (
-    <div className="space-y-4 max-w-3xl">
+    <div className="space-y-4 w-full max-w-4xl">
       {/* Header */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <Link
@@ -125,7 +124,7 @@ export default async function EmailDetailPage({ params }: PageProps) {
                 Full email body could not be loaded.
               </p>
               <Separator />
-              <p className="text-sm text-muted-foreground">{activity.snippet}</p>
+              <p className="text-sm text-muted-foreground">{decodeHtmlEntities(activity.snippet)}</p>
             </div>
           )}
         </CardContent>

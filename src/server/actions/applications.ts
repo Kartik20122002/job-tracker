@@ -2,9 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { supabaseAdmin } from "@/lib/supabase";
 import { ApplicationSchema, type ApplicationInput } from "@/lib/validations/application";
-import { ApplicationStatus } from "@/generated/prisma/client";
+import { ApplicationStatus } from "@/lib/enums";
 
 type ActionResult<T = void> =
   | { success: true; data?: T }
@@ -12,9 +12,7 @@ type ActionResult<T = void> =
 
 async function requireAuth() {
   const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized");
-  }
+  if (!session?.user?.id) throw new Error("Unauthorized");
   return session.user.id;
 }
 
@@ -30,29 +28,33 @@ export async function createApplication(
 
   const { jobLink, jobDescLink, recruiterEmail, ...rest } = parsed.data;
 
-  const application = await prisma.$transaction(async (tx) => {
-    const app = await tx.application.create({
-      data: {
-        ...rest,
-        jobLink: jobLink || null,
-        jobDescLink: jobDescLink || null,
-        recruiterEmail: recruiterEmail || null,
-        userId,
-      },
-    });
-    await tx.statusHistory.create({
-      data: {
-        applicationId: app.id,
-        oldStatus: null,
-        newStatus: app.status,
-      },
-    });
-    return app;
-  });
+  const { data: app, error } = await supabaseAdmin
+    .from("Application")
+    .insert({
+      ...rest,
+      appliedDate: rest.appliedDate.toISOString(),
+      nextInterviewDate: rest.nextInterviewDate?.toISOString() ?? null,
+      offerDate: rest.offerDate?.toISOString() ?? null,
+      joiningDate: rest.joiningDate?.toISOString() ?? null,
+      jobLink: jobLink || null,
+      jobDescLink: jobDescLink || null,
+      recruiterEmail: recruiterEmail || null,
+      userId,
+    })
+    .select("id, status")
+    .single();
+
+  if (error || !app) {
+    return { success: false, error: "Failed to create application" };
+  }
+
+  await supabaseAdmin
+    .from("StatusHistory")
+    .insert({ applicationId: app.id, oldStatus: null, newStatus: app.status });
 
   revalidatePath("/applications");
   revalidatePath("/dashboard");
-  return { success: true, data: { id: application.id } };
+  return { success: true, data: { id: app.id } };
 }
 
 export async function updateApplication(
@@ -61,9 +63,12 @@ export async function updateApplication(
 ): Promise<ActionResult> {
   const userId = await requireAuth();
 
-  const existing = await prisma.application.findFirst({
-    where: { id, userId },
-  });
+  const { data: existing } = await supabaseAdmin
+    .from("Application")
+    .select("status")
+    .eq("id", id)
+    .eq("userId", userId)
+    .single();
   if (!existing) return { success: false, error: "Application not found" };
 
   const parsed = ApplicationSchema.safeParse(data);
@@ -73,26 +78,27 @@ export async function updateApplication(
 
   const { jobLink, jobDescLink, recruiterEmail, ...rest } = parsed.data;
 
-  await prisma.$transaction(async (tx) => {
-    if (rest.status !== existing.status) {
-      await tx.statusHistory.create({
-        data: {
-          applicationId: id,
-          oldStatus: existing.status,
-          newStatus: rest.status,
-        },
-      });
-    }
-    await tx.application.update({
-      where: { id },
-      data: {
-        ...rest,
-        jobLink: jobLink || null,
-        jobDescLink: jobDescLink || null,
-        recruiterEmail: recruiterEmail || null,
-      },
-    });
-  });
+  if (rest.status !== existing.status) {
+    await supabaseAdmin
+      .from("StatusHistory")
+      .insert({ applicationId: id, oldStatus: existing.status, newStatus: rest.status });
+  }
+
+  const { error } = await supabaseAdmin
+    .from("Application")
+    .update({
+      ...rest,
+      appliedDate: rest.appliedDate.toISOString(),
+      nextInterviewDate: rest.nextInterviewDate?.toISOString() ?? null,
+      offerDate: rest.offerDate?.toISOString() ?? null,
+      joiningDate: rest.joiningDate?.toISOString() ?? null,
+      jobLink: jobLink || null,
+      jobDescLink: jobDescLink || null,
+      recruiterEmail: recruiterEmail || null,
+    })
+    .eq("id", id);
+
+  if (error) return { success: false, error: "Failed to update application" };
 
   revalidatePath(`/applications/${id}`);
   revalidatePath("/applications");
@@ -103,12 +109,20 @@ export async function updateApplication(
 export async function deleteApplication(id: string): Promise<ActionResult> {
   const userId = await requireAuth();
 
-  const existing = await prisma.application.findFirst({
-    where: { id, userId },
-  });
+  const { data: existing } = await supabaseAdmin
+    .from("Application")
+    .select("id")
+    .eq("id", id)
+    .eq("userId", userId)
+    .single();
   if (!existing) return { success: false, error: "Application not found" };
 
-  await prisma.application.delete({ where: { id } });
+  const { error } = await supabaseAdmin
+    .from("Application")
+    .delete()
+    .eq("id", id);
+
+  if (error) return { success: false, error: "Failed to delete application" };
 
   revalidatePath("/applications");
   revalidatePath("/dashboard");
@@ -118,51 +132,50 @@ export async function deleteApplication(id: string): Promise<ActionResult> {
 export async function duplicateApplication(id: string): Promise<ActionResult<{ id: string }>> {
   const userId = await requireAuth();
 
-  const existing = await prisma.application.findFirst({
-    where: { id, userId },
-  });
+  const { data: existing } = await supabaseAdmin
+    .from("Application")
+    .select("*")
+    .eq("id", id)
+    .eq("userId", userId)
+    .single();
   if (!existing) return { success: false, error: "Application not found" };
 
-  const {
-    id: _id,
-    createdAt: _createdAt,
-    updatedAt: _updatedAt,
-    resumeFileName: _resumeFileName,
-    resumeFilePath: _resumeFilePath,
-    resumeUploadDate: _resumeUploadDate,
-    nextInterviewDate: _nextInterviewDate,
-    offerDate: _offerDate,
-    joiningDate: _joiningDate,
-    statusHistory: _statusHistory,
-    ...rest
-  } = existing as typeof existing & { statusHistory?: unknown[] };
+  const { data: app, error } = await supabaseAdmin
+    .from("Application")
+    .insert({
+      userId: existing.userId,
+      company: existing.company,
+      position: existing.position,
+      country: existing.country,
+      location: existing.location,
+      jobLink: existing.jobLink,
+      jobDescLink: existing.jobDescLink,
+      source: existing.source,
+      status: ApplicationStatus.Applied,
+      applicationType: existing.applicationType,
+      visaSponsorship: existing.visaSponsorship,
+      relocation: existing.relocation,
+      referral: existing.referral,
+      targetSalary: existing.targetSalary,
+      currency: existing.currency,
+      appliedDate: new Date().toISOString(),
+      recruiterName: existing.recruiterName,
+      recruiterEmail: existing.recruiterEmail,
+      recruiterLinkedIn: existing.recruiterLinkedIn,
+      notes: existing.notes,
+      interviewFeedback: existing.interviewFeedback,
+    })
+    .select("id, status")
+    .single();
 
-  const duplicate = await prisma.$transaction(async (tx) => {
-    const app = await tx.application.create({
-      data: {
-        ...rest,
-        status: ApplicationStatus.Applied,
-        appliedDate: new Date(),
-        nextInterviewDate: null,
-        offerDate: null,
-        joiningDate: null,
-        resumeFileName: null,
-        resumeFilePath: null,
-        resumeUploadDate: null,
-      },
-    });
-    await tx.statusHistory.create({
-      data: {
-        applicationId: app.id,
-        oldStatus: null,
-        newStatus: ApplicationStatus.Applied,
-      },
-    });
-    return app;
-  });
+  if (error || !app) return { success: false, error: "Failed to duplicate application" };
+
+  await supabaseAdmin
+    .from("StatusHistory")
+    .insert({ applicationId: app.id, oldStatus: null, newStatus: ApplicationStatus.Applied });
 
   revalidatePath("/applications");
-  return { success: true, data: { id: duplicate.id } };
+  return { success: true, data: { id: app.id } };
 }
 
 export async function updateApplicationResume(
@@ -172,15 +185,20 @@ export async function updateApplicationResume(
 ): Promise<ActionResult> {
   const userId = await requireAuth();
 
-  const existing = await prisma.application.findFirst({
-    where: { id, userId },
-  });
+  const { data: existing } = await supabaseAdmin
+    .from("Application")
+    .select("id")
+    .eq("id", id)
+    .eq("userId", userId)
+    .single();
   if (!existing) return { success: false, error: "Application not found" };
 
-  await prisma.application.update({
-    where: { id },
-    data: { resumeFileName, resumeFilePath, resumeUploadDate: new Date() },
-  });
+  const { error } = await supabaseAdmin
+    .from("Application")
+    .update({ resumeFileName, resumeFilePath, resumeUploadDate: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) return { success: false, error: "Failed to update resume" };
 
   revalidatePath(`/applications/${id}`);
   return { success: true };

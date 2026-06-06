@@ -1,6 +1,8 @@
-import { writeFile } from "fs/promises";
-import path from "path";
 import { auth } from "@/lib/auth";
+import { supabaseAdmin } from "@/lib/supabase";
+
+const BUCKET = "resumes";
+const MAX_SIZE_BYTES = 1 * 1024 * 1024; // 1 MB
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -19,27 +21,22 @@ export async function POST(request: Request) {
     return Response.json({ error: "Only PDF files are allowed" }, { status: 400 });
   }
 
-  const maxSize = parseInt(process.env.MAX_FILE_SIZE_MB ?? "10") * 1024 * 1024;
-  if (file.size > maxSize) {
-    return Response.json(
-      { error: `File size must be under ${process.env.MAX_FILE_SIZE_MB ?? 10}MB` },
-      { status: 400 }
-    );
+  if (file.size > MAX_SIZE_BYTES) {
+    return Response.json({ error: "File size must be under 1 MB" }, { status: 400 });
   }
 
-  const uploadDir = process.env.UPLOAD_DIR ?? "/app/uploads";
   const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const fileName = `${session.user.id}_${Date.now()}_${sanitizedName}`;
-  const filePath = path.join(uploadDir, fileName);
-
-  const resolvedPath = path.resolve(filePath);
-  const resolvedUploadDir = path.resolve(uploadDir);
-  if (!resolvedPath.startsWith(resolvedUploadDir)) {
-    return Response.json({ error: "Invalid file path" }, { status: 400 });
-  }
+  const storagePath = `${session.user.id}/${Date.now()}_${sanitizedName}`;
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(filePath, buffer);
 
-  return Response.json({ fileName });
+  const { error } = await supabaseAdmin.storage
+    .from(BUCKET)
+    .upload(storagePath, buffer, { contentType: "application/pdf" });
+
+  if (error) {
+    return Response.json({ error: "Upload failed" }, { status: 500 });
+  }
+
+  return Response.json({ fileName: storagePath });
 }

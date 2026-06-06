@@ -1,7 +1,7 @@
-import { readFile } from "fs/promises";
-import path from "path";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { supabaseAdmin } from "@/lib/supabase";
+
+const BUCKET = "resumes";
 
 export async function GET(
   request: Request,
@@ -16,40 +16,29 @@ export async function GET(
   const { searchParams } = new URL(request.url);
   const mode = searchParams.get("mode");
 
-  const application = await prisma.application.findFirst({
-    where: { userId: session.user.id, resumeFilePath: fileName },
-  });
+  // fileName here is URL-encoded — decode it to get the real storage path
+  const storagePath = decodeURIComponent(fileName);
+
+  const { data: application } = await supabaseAdmin
+    .from("Application")
+    .select("resumeFileName")
+    .eq("userId", session.user.id)
+    .eq("resumeFilePath", storagePath)
+    .single();
 
   if (!application) {
     return new Response("Not found", { status: 404 });
   }
 
-  const uploadDir = process.env.UPLOAD_DIR ?? "/app/uploads";
-  const filePath = path.join(uploadDir, fileName);
+  const { data, error } = await supabaseAdmin.storage
+    .from(BUCKET)
+    .createSignedUrl(storagePath, 60, {
+      download: mode !== "inline" ? (application.resumeFileName ?? true) : false,
+    });
 
-  const resolvedPath = path.resolve(filePath);
-  const resolvedUploadDir = path.resolve(uploadDir);
-  if (!resolvedPath.startsWith(resolvedUploadDir)) {
-    return new Response("Forbidden", { status: 403 });
-  }
-
-  let fileData: Buffer;
-  try {
-    fileData = await readFile(filePath);
-  } catch {
+  if (error || !data) {
     return new Response("File not found", { status: 404 });
   }
 
-  const disposition =
-    mode === "inline"
-      ? `inline; filename="${fileName}"`
-      : `attachment; filename="${application.resumeFileName ?? fileName}"`;
-
-  return new Response(new Uint8Array(fileData), {
-    headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": disposition,
-      "Content-Length": fileData.length.toString(),
-    },
-  });
+  return Response.redirect(data.signedUrl);
 }

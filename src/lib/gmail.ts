@@ -256,13 +256,22 @@ function stripHtml(html: string): string {
   return html
     .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
     .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
-    .replace(/<[^>]+>/g, " ")
+    // Block-level elements → newlines to preserve paragraph structure
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/?(p|div|tr|li|h[1-6]|blockquote|section|article|header|footer|address)[^>]*>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
-    .replace(/\s{2,}/g, " ")
+    .replace(/&#39;/g, "'")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code, 10)))
+    .replace(/&[a-z]+;/gi, " ")
+    // Collapse horizontal whitespace but keep newlines
+    .replace(/[^\S\n]{2,}/g, " ")
+    // Collapse 3+ consecutive newlines to 2
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
 

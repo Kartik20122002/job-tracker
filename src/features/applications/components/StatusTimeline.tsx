@@ -1,6 +1,6 @@
 import { formatDateTime } from "@/lib/utils";
 import { StatusBadge } from "@/components/StatusBadge";
-import type { StatusHistory } from "@/generated/prisma/client";
+import type { StatusHistory } from "@/types/database";
 
 interface StatusTimelineProps {
   history: StatusHistory[];

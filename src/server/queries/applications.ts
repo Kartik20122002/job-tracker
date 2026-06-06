@@ -1,7 +1,8 @@
-import { prisma } from "@/lib/db";
-import { ApplicationSource, ApplicationStatus } from "@/generated/prisma/client";
-import { Prisma } from "@/generated/prisma/client";
+import { supabaseAdmin } from "@/lib/supabase";
+import { ApplicationSource, ApplicationStatus } from "@/lib/enums";
+import type { ApplicationWithHistory } from "@/types/database";
 
+export { ApplicationSource, ApplicationStatus };
 export const PAGE_SIZE = 20;
 
 export interface ApplicationFilters {
@@ -16,99 +17,100 @@ export interface ApplicationFilters {
 export async function getApplications(userId: string, filters: ApplicationFilters = {}) {
   const { search, status, country, source, sort = "newest", page = 1 } = filters;
 
-  const where: Prisma.ApplicationWhereInput = { userId };
+  let query = supabaseAdmin
+    .from("Application")
+    .select("*", { count: "exact" })
+    .eq("userId", userId);
 
   if (search) {
-    where.OR = [
-      { company: { contains: search, mode: "insensitive" } },
-      { position: { contains: search, mode: "insensitive" } },
-    ];
+    query = query.or(`company.ilike.%${search}%,position.ilike.%${search}%`);
   }
-  if (status) where.status = status;
-  if (country) where.country = { contains: country, mode: "insensitive" };
-  if (source) where.source = source;
+  if (status) query = query.eq("status", status);
+  if (country) query = query.ilike("country", `%${country}%`);
+  if (source) query = query.eq("source", source);
 
-  const orderBy: Prisma.ApplicationOrderByWithRelationInput =
-    sort === "oldest"
-      ? { appliedDate: "asc" }
-      : sort === "company"
-      ? { company: "asc" }
-      : { appliedDate: "desc" };
+  const ascending = sort === "oldest";
+  const column = sort === "company" ? "company" : "appliedDate";
+  query = query.order(column, { ascending });
 
-  const skip = (page - 1) * PAGE_SIZE;
+  const from = (page - 1) * PAGE_SIZE;
+  const to = from + PAGE_SIZE - 1;
+  query = query.range(from, to);
 
-  const [applications, total] = await prisma.$transaction([
-    prisma.application.findMany({
-      where,
-      orderBy,
-      skip,
-      take: PAGE_SIZE,
-    }),
-    prisma.application.count({ where }),
-  ]);
+  const { data: applications, count, error } = await query;
 
-  return { applications, total, page, pageSize: PAGE_SIZE };
+  if (error) throw error;
+
+  return { applications: applications ?? [], total: count ?? 0, page, pageSize: PAGE_SIZE };
 }
 
-export async function getApplicationById(id: string, userId: string) {
-  return prisma.application.findFirst({
-    where: { id, userId },
-    include: {
-      statusHistory: { orderBy: { changedAt: "asc" } },
-    },
-  });
+export async function getApplicationById(
+  id: string,
+  userId: string
+): Promise<ApplicationWithHistory | null> {
+  const { data, error } = await supabaseAdmin
+    .from("Application")
+    .select("*, StatusHistory(*)")
+    .eq("id", id)
+    .eq("userId", userId)
+    .single();
+
+  if (error || !data) return null;
+
+  const statusHistory = ((data as Record<string, unknown>).StatusHistory as ApplicationWithHistory["statusHistory"] ?? [])
+    .sort((a, b) => new Date(a.changedAt).getTime() - new Date(b.changedAt).getTime());
+
+  const { StatusHistory: _, ...app } = data as typeof data & { StatusHistory: unknown };
+
+  return { ...(app as Omit<ApplicationWithHistory, "statusHistory">), statusHistory };
 }
 
 export async function getDashboardData(userId: string) {
-  const [statusCounts, recentApplications, upcomingInterviews] = await Promise.all([
-    prisma.application.groupBy({
-      by: ["status"],
-      where: { userId },
-      _count: true,
-    }),
-    prisma.application.findMany({
-      where: { userId },
-      orderBy: { appliedDate: "desc" },
-      take: 5,
-    }),
-    prisma.application.findMany({
-      where: {
-        userId,
-        nextInterviewDate: { gte: new Date() },
-      },
-      orderBy: { nextInterviewDate: "asc" },
-      take: 5,
-    }),
-  ]);
+  const [{ data: allApps }, { data: recentApplications }, { data: upcomingInterviews }] =
+    await Promise.all([
+      supabaseAdmin
+        .from("Application")
+        .select("status")
+        .eq("userId", userId),
+      supabaseAdmin
+        .from("Application")
+        .select("*")
+        .eq("userId", userId)
+        .order("appliedDate", { ascending: false })
+        .limit(5),
+      supabaseAdmin
+        .from("Application")
+        .select("*")
+        .eq("userId", userId)
+        .gte("nextInterviewDate", new Date().toISOString())
+        .order("nextInterviewDate", { ascending: true })
+        .limit(5),
+    ]);
 
-  const total = statusCounts.reduce((sum, s) => sum + s._count, 0);
-  const inactiveStatuses = new Set<string>([
+  // Aggregate status counts in JS
+  const countMap = new Map<string, number>();
+  for (const { status } of allApps ?? []) {
+    countMap.set(status, (countMap.get(status) ?? 0) + 1);
+  }
+  const statusCounts = Array.from(countMap.entries()).map(([status, count]) => ({ status, count }));
+
+  const inactiveStatuses = new Set([
     ApplicationStatus.Rejected,
     ApplicationStatus.Withdrawn,
     ApplicationStatus.Accepted,
   ]);
-  const active = statusCounts
-    .filter((s) => !inactiveStatuses.has(s.status))
-    .reduce((sum, s) => sum + s._count, 0);
-  const rejectedStatuses = new Set<string>([
-    ApplicationStatus.Rejected,
-    ApplicationStatus.Withdrawn,
-  ]);
-  const rejected = statusCounts
-    .filter((s) => rejectedStatuses.has(s.status))
-    .reduce((sum, s) => sum + s._count, 0);
-  const offerStatuses = new Set<string>([
-    ApplicationStatus.Offer_Received,
-    ApplicationStatus.Accepted,
-  ]);
-  const offers = statusCounts
-    .filter((s) => offerStatuses.has(s.status))
-    .reduce((sum, s) => sum + s._count, 0);
+  const rejectedStatuses = new Set([ApplicationStatus.Rejected, ApplicationStatus.Withdrawn]);
+  const offerStatuses = new Set([ApplicationStatus.Offer_Received, ApplicationStatus.Accepted]);
+
+  const total = statusCounts.reduce((s, x) => s + x.count, 0);
+  const active = statusCounts.filter((x) => !inactiveStatuses.has(x.status as ApplicationStatus)).reduce((s, x) => s + x.count, 0);
+  const rejected = statusCounts.filter((x) => rejectedStatuses.has(x.status as ApplicationStatus)).reduce((s, x) => s + x.count, 0);
+  const offers = statusCounts.filter((x) => offerStatuses.has(x.status as ApplicationStatus)).reduce((s, x) => s + x.count, 0);
 
   return {
     summary: { total, active, rejected, offers },
-    statusCounts: statusCounts.map((s) => ({ status: s.status, count: s._count })),
-    recentApplications,
-    upcomingInterviews,
+    statusCounts,
+    recentApplications: recentApplications ?? [],
+    upcomingInterviews: upcomingInterviews ?? [],
   };
 }

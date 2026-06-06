@@ -4,7 +4,7 @@ import {
   ApplicationStatus,
   ApplicationType,
   Currency,
-} from "@/generated/prisma/enums";
+} from "@/lib/enums";
 
 export const ApplicationSchema = z.object({
   company: z.string().min(1, "Company name is required"),

@@ -10,7 +10,7 @@ import { getDashboardData } from "@/server/queries/applications";
 import { getGmailConnectionStatus, getRecentEmailActivities, getTotalMatchedEmails } from "@/server/queries/gmail";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
-import type { Application } from "@/generated/prisma/client";
+import type { Application } from "@/types/database";
 
 export default async function DashboardPage() {
   const session = await auth();

@@ -32,7 +32,7 @@ import {
   ApplicationStatus,
   ApplicationType,
   Currency,
-} from "@/generated/prisma/enums";
+} from "@/lib/enums";
 import { createApplication, updateApplication } from "@/server/actions/applications";
 import { ResumeSection } from "@/features/applications/components/ResumeSection";
 

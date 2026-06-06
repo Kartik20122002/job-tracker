@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { supabaseAdmin } from "@/lib/supabase";
 import { exchangeCodeForTokens, getGmailProfile, GmailApiError } from "@/lib/gmail";
-import { prisma } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -30,20 +30,15 @@ export async function GET(request: NextRequest) {
 
     const profile = await getGmailProfile(tokens.access_token);
 
-    await prisma.gmailConnection.upsert({
-      where: { userId: session.user.id },
-      create: {
+    await supabaseAdmin.from("GmailConnection").upsert(
+      {
         userId: session.user.id,
         gmailAddress: profile.emailAddress,
         accessToken: tokens.access_token,
         refreshToken: tokens.refresh_token,
       },
-      update: {
-        gmailAddress: profile.emailAddress,
-        accessToken: tokens.access_token,
-        refreshToken: tokens.refresh_token,
-      },
-    });
+      { onConflict: "userId" }
+    );
 
     settingsUrl.searchParams.set("gmail_connected", "true");
     return NextResponse.redirect(settingsUrl);

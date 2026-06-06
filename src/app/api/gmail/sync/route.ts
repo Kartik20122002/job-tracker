@@ -1,15 +1,12 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { supabaseAdmin } from "@/lib/supabase";
 import { refreshAccessToken, searchGmailMessages, getGmailMessage, GmailApiError } from "@/lib/gmail";
+import { ApplicationStatus } from "@/lib/enums";
 import type { MatchedByValue } from "@/lib/gmail-matcher";
 import type { ParsedEmail } from "@/lib/gmail";
-import { ApplicationStatus } from "@/generated/prisma/client";
 
-const INACTIVE_STATUSES: ApplicationStatus[] = [
-  ApplicationStatus.Rejected,
-  ApplicationStatus.Withdrawn,
-];
+const INACTIVE_STATUSES = [ApplicationStatus.Rejected, ApplicationStatus.Withdrawn];
 
 // ─── Application lookup maps ──────────────────────────────────────────────────
 
@@ -55,15 +52,9 @@ export function buildMaps(apps: AppInfo[]): AppMaps {
   return { byEmail, byDomain, byCompany, byPosition };
 }
 
-// ─── Batched Gmail queries ────────────────────────────────────────────────────
-// Strategy: recruiter email batches (precision) + 1 keyword query (broad coverage).
-// Company name queries removed — too noisy and covered by keyword + domain matching.
-// All list queries run in parallel: 41 queries × 5 units = 205 units/sec < 250 limit.
-
 function buildQueries(maps: AppMaps): string[] {
   const queries: string[] = [];
 
-  // Recruiter emails batched 5 per query — exact sender matching
   const emails = Array.from(maps.byEmail.keys());
   for (let i = 0; i < emails.length; i += 5) {
     const batch = emails.slice(i, i + 5);
@@ -74,7 +65,6 @@ function buildQueries(maps: AppMaps): string[] {
     queries.push(q);
   }
 
-  // Broad recruitment keyword query — catches emails without exact sender match
   queries.push(
     `(interview OR "job offer" OR shortlisted OR "move forward" OR regret OR "application status" OR congratulations OR selected) newer_than:30d`
   );
@@ -82,17 +72,13 @@ function buildQueries(maps: AppMaps): string[] {
   return queries;
 }
 
-// ─── O(1) matching using maps ─────────────────────────────────────────────────
-
 export function matchEmailToApp(
   email: ParsedEmail,
   maps: AppMaps
 ): { app: AppInfo; score: number; matchedBy: MatchedByValue } | null {
-  // Rule 1: exact recruiter email
   const exact = maps.byEmail.get(email.senderEmail);
   if (exact) return { app: exact, score: 100, matchedBy: "RECRUITER_EMAIL" };
 
-  // Rule 2: sender domain matches a recruiter's domain
   const domain = email.senderEmail.split("@")[1]?.toLowerCase();
   if (domain) {
     const apps = maps.byDomain.get(domain);
@@ -102,17 +88,12 @@ export function matchEmailToApp(
   const subject = email.subject.toLowerCase();
   const snippet = email.snippet.toLowerCase();
 
-  // Rule 3: company name in subject
   for (const [company, apps] of maps.byCompany) {
     if (subject.includes(company)) return { app: apps[0], score: 70, matchedBy: "COMPANY_SUBJECT" };
   }
-
-  // Rule 4: company name in snippet
   for (const [company, apps] of maps.byCompany) {
     if (snippet.includes(company)) return { app: apps[0], score: 60, matchedBy: "COMPANY_SNIPPET" };
   }
-
-  // Rule 5: position title in subject
   for (const [position, apps] of maps.byPosition) {
     if (subject.includes(position)) return { app: apps[0], score: 50, matchedBy: "POSITION_TITLE" };
   }
@@ -120,56 +101,84 @@ export function matchEmailToApp(
   return null;
 }
 
-// ─── Sync handler ─────────────────────────────────────────────────────────────
-
 export async function POST() {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const userId = session.user.id;
 
-  const connection = await prisma.gmailConnection.findUnique({ where: { userId } });
+  const { data: connection } = await supabaseAdmin
+    .from("GmailConnection")
+    .select("accessToken, refreshToken")
+    .eq("userId", userId)
+    .single();
+
   if (!connection) return NextResponse.json({ error: "Gmail not connected" }, { status: 400 });
 
-  const recentRunning = await prisma.gmailSync.findFirst({
-    where: { userId, status: "RUNNING", startedAt: { gte: new Date(Date.now() - 5 * 60 * 1000) } },
-  });
+  const { data: recentRunning } = await supabaseAdmin
+    .from("GmailSync")
+    .select("id")
+    .eq("userId", userId)
+    .eq("status", "RUNNING")
+    .gte("startedAt", new Date(Date.now() - 5 * 60 * 1000).toISOString())
+    .limit(1)
+    .single();
+
   if (recentRunning) return NextResponse.json({ error: "Sync already in progress" }, { status: 409 });
 
-  const syncRecord = await prisma.gmailSync.create({ data: { userId, status: "RUNNING" } });
+  const { data: syncRecord } = await supabaseAdmin
+    .from("GmailSync")
+    .insert({ userId, status: "RUNNING" })
+    .select("id")
+    .single();
+
+  if (!syncRecord) return NextResponse.json({ error: "Failed to start sync" }, { status: 500 });
+
   const startTime = Date.now();
 
+  const failSync = async () => {
+    await supabaseAdmin
+      .from("GmailSync")
+      .update({ status: "FAILED", completedAt: new Date().toISOString() })
+      .eq("id", syncRecord.id);
+  };
+
   try {
-    // Refresh token
     let accessToken: string;
     try {
       accessToken = await refreshAccessToken(connection.refreshToken);
-      await prisma.gmailConnection.update({ where: { userId }, data: { accessToken } });
+      await supabaseAdmin
+        .from("GmailConnection")
+        .update({ accessToken })
+        .eq("userId", userId);
     } catch {
-      await prisma.gmailSync.update({ where: { id: syncRecord.id }, data: { status: "FAILED", completedAt: new Date() } });
-      return NextResponse.json({ error: "Gmail access was revoked. Please reconnect Gmail in Settings." }, { status: 401 });
+      await failSync();
+      return NextResponse.json(
+        { error: "Gmail access was revoked. Please reconnect Gmail in Settings." },
+        { status: 401 }
+      );
     }
 
-    // Load active applications and build maps
-    const applications = await prisma.application.findMany({
-      where: { userId, status: { notIn: INACTIVE_STATUSES } },
-      select: { id: true, company: true, position: true, recruiterEmail: true },
-    });
+    const { data: applications } = await supabaseAdmin
+      .from("Application")
+      .select("id, company, position, recruiterEmail")
+      .eq("userId", userId)
+      .neq("status", ApplicationStatus.Rejected)
+      .neq("status", ApplicationStatus.Withdrawn);
 
-    if (applications.length === 0) {
-      await prisma.gmailSync.update({ where: { id: syncRecord.id }, data: { status: "SUCCESS", completedAt: new Date(), emailsScanned: 0, emailsMatched: 0 } });
+    if (!applications?.length) {
+      await supabaseAdmin
+        .from("GmailSync")
+        .update({ status: "SUCCESS", completedAt: new Date().toISOString(), emailsScanned: 0, emailsMatched: 0 })
+        .eq("id", syncRecord.id);
       return NextResponse.json({ status: "SUCCESS", emailsScanned: 0, emailsMatched: 0, duration: Date.now() - startTime });
     }
 
     const maps = buildMaps(applications);
     const queries = buildQueries(maps);
 
-    console.log(`[Gmail Sync] ${applications.length} apps → ${queries.length} queries (batched ${LIST_BATCH}/round)`);
-
-    // Run list queries in batches of 50 — 50 × 5 = 250 units/round, exactly at the per-user limit.
-    // Full parallel would exceed 250/sec for 500+ apps and trigger silent 429 coverage gaps.
     const LIST_BATCH = 50;
-    const allStubs = new Map<string, string>(); // messageId → threadId
+    const allStubs = new Map<string, string>();
 
     for (let i = 0; i < queries.length; i += LIST_BATCH) {
       const round = queries.slice(i, i + LIST_BATCH);
@@ -190,21 +199,15 @@ export async function POST() {
       }
     }
 
-    console.log(`[Gmail Sync] ${allStubs.size} unique stubs after dedup`);
-
-    // Skip stubs already in DB — avoid redundant messages.get calls
     const allIds = Array.from(allStubs.keys());
-    const alreadySynced = await prisma.emailActivity.findMany({
-      where: { gmailMessageId: { in: allIds } },
-      select: { gmailMessageId: true },
-    });
-    const syncedSet = new Set(alreadySynced.map((e) => e.gmailMessageId));
+    const { data: alreadySynced } = await supabaseAdmin
+      .from("EmailActivity")
+      .select("gmailMessageId")
+      .in("gmailMessageId", allIds);
+
+    const syncedSet = new Set((alreadySynced ?? []).map((e) => e.gmailMessageId));
     const newStubs = allIds.filter((id) => !syncedSet.has(id));
 
-    console.log(`[Gmail Sync] ${newStubs.length} new stubs to fetch (${syncedSet.size} already in DB)`);
-
-    // Fetch new message details in parallel batches of 10
-    // 10 × 20 quota units = 200 units/sec — safely under the 250/sec per-user limit
     const BATCH = 10;
     type Candidate = { applicationId: string; threadId: string; score: number; matchedBy: MatchedByValue; parsed: ParsedEmail };
     const candidates = new Map<string, Candidate>();
@@ -228,7 +231,6 @@ export async function POST() {
       );
     }
 
-    // Insert matched emails
     let emailsMatched = 0;
     if (candidates.size > 0) {
       const toCreate = Array.from(candidates.entries()).map(([messageId, c]) => ({
@@ -239,25 +241,31 @@ export async function POST() {
         senderEmail: c.parsed.senderEmail,
         subject: c.parsed.subject,
         snippet: c.parsed.snippet,
-        receivedAt: c.parsed.receivedAt,
+        receivedAt: c.parsed.receivedAt.toISOString(),
         matchedBy: c.matchedBy,
       }));
 
-      const result = await prisma.emailActivity.createMany({ data: toCreate, skipDuplicates: true });
-      emailsMatched = result.count;
+      const { data: inserted } = await supabaseAdmin
+        .from("EmailActivity")
+        .upsert(toCreate, { onConflict: "gmailMessageId", ignoreDuplicates: true })
+        .select("id");
+
+      emailsMatched = inserted?.length ?? 0;
     }
 
     const emailsScanned = newStubs.length;
 
-    await prisma.gmailSync.update({
-      where: { id: syncRecord.id },
-      data: { status: "SUCCESS", completedAt: new Date(), emailsScanned, emailsMatched },
-    });
+    await supabaseAdmin
+      .from("GmailSync")
+      .update({ status: "SUCCESS", completedAt: new Date().toISOString(), emailsScanned, emailsMatched })
+      .eq("id", syncRecord.id);
 
-    console.log(`[Gmail Sync] done — scanned=${emailsScanned} matched=${emailsMatched} ms=${Date.now() - startTime}`);
     return NextResponse.json({ status: "SUCCESS", emailsScanned, emailsMatched, duration: Date.now() - startTime });
   } catch (err) {
-    await prisma.gmailSync.update({ where: { id: syncRecord.id }, data: { status: "FAILED", completedAt: new Date() } });
-    return NextResponse.json({ error: err instanceof GmailApiError ? err.message : "Sync failed. Please try again." }, { status: 500 });
+    await failSync();
+    return NextResponse.json(
+      { error: err instanceof GmailApiError ? err.message : "Sync failed. Please try again." },
+      { status: 500 }
+    );
   }
 }

@@ -1,4 +1,4 @@
-import type { Application } from "@/generated/prisma/client";
+import type { Application } from "@/types/database";
 import type { ParsedEmail } from "./gmail";
 
 export type MatchedByValue =

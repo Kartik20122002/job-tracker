@@ -1,7 +1,7 @@
 "use client";
 
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
-import { ApplicationStatus } from "@/generated/prisma/enums";
+import { ApplicationStatus } from "@/lib/enums";
 import { STATUS_LABELS } from "@/components/StatusBadge";
 
 const COLORS = [

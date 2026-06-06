@@ -1,7 +1,7 @@
 import { formatDate } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Mail } from "lucide-react";
-import type { EmailActivity } from "@/generated/prisma/client";
+import type { EmailActivity } from "@/types/database";
 
 const MATCHED_BY_LABEL: Record<string, string> = {
   RECRUITER_EMAIL: "Recruiter email",

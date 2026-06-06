@@ -1,21 +1,29 @@
-import { prisma } from "@/lib/db";
+import { supabaseAdmin } from "@/lib/supabase";
+import type { EmailActivityWithApplication } from "@/types/database";
 
 export async function getGmailConnectionStatus(userId: string) {
-  const [connection, lastSync, runningSync] = await Promise.all([
-    prisma.gmailConnection.findUnique({
-      where: { userId },
-      select: { gmailAddress: true, connectedAt: true },
-    }),
-    prisma.gmailSync.findFirst({
-      where: { userId, status: "SUCCESS" },
-      orderBy: { completedAt: "desc" },
-      select: { completedAt: true, emailsScanned: true, emailsMatched: true },
-    }),
-    prisma.gmailSync.findFirst({
-      where: { userId, status: "RUNNING" },
-      orderBy: { startedAt: "desc" },
-      select: { startedAt: true },
-    }),
+  const [{ data: connection }, { data: lastSync }, { data: runningSync }] = await Promise.all([
+    supabaseAdmin
+      .from("GmailConnection")
+      .select("gmailAddress, connectedAt")
+      .eq("userId", userId)
+      .single(),
+    supabaseAdmin
+      .from("GmailSync")
+      .select("completedAt, emailsScanned, emailsMatched")
+      .eq("userId", userId)
+      .eq("status", "SUCCESS")
+      .order("completedAt", { ascending: false })
+      .limit(1)
+      .single(),
+    supabaseAdmin
+      .from("GmailSync")
+      .select("startedAt")
+      .eq("userId", userId)
+      .eq("status", "RUNNING")
+      .order("startedAt", { ascending: false })
+      .limit(1)
+      .single(),
   ]);
 
   return {
@@ -27,35 +35,73 @@ export async function getGmailConnectionStatus(userId: string) {
   };
 }
 
-export async function getRecentEmailActivities(userId: string, limit = 5) {
-  return prisma.emailActivity.findMany({
-    where: { application: { userId } },
-    orderBy: { receivedAt: "desc" },
-    take: limit,
-    include: {
-      application: { select: { company: true, id: true } },
-    },
+export async function getRecentEmailActivities(
+  userId: string,
+  limit = 5
+): Promise<EmailActivityWithApplication[]> {
+  const { data: apps } = await supabaseAdmin
+    .from("Application")
+    .select("id")
+    .eq("userId", userId);
+
+  const appIds = apps?.map((a) => a.id) ?? [];
+  if (!appIds.length) return [];
+
+  const { data } = await supabaseAdmin
+    .from("EmailActivity")
+    .select("*, Application!inner(id, company)")
+    .in("applicationId", appIds)
+    .order("receivedAt", { ascending: false })
+    .limit(limit);
+
+  return (data ?? []).map((row) => {
+    const { Application: app, ...rest } = row as typeof row & { Application: { id: string; company: string } };
+    return { ...rest, application: app };
   });
 }
 
-export async function getTotalMatchedEmails(userId: string) {
-  return prisma.emailActivity.count({
-    where: { application: { userId } },
-  });
+export async function getTotalMatchedEmails(userId: string): Promise<number> {
+  const { data: apps } = await supabaseAdmin
+    .from("Application")
+    .select("id")
+    .eq("userId", userId);
+
+  const appIds = apps?.map((a) => a.id) ?? [];
+  if (!appIds.length) return 0;
+
+  const { count } = await supabaseAdmin
+    .from("EmailActivity")
+    .select("*", { count: "exact", head: true })
+    .in("applicationId", appIds);
+
+  return count ?? 0;
 }
 
 export async function getEmailActivitiesForApplication(applicationId: string) {
-  return prisma.emailActivity.findMany({
-    where: { applicationId },
-    orderBy: { receivedAt: "desc" },
-  });
+  const { data } = await supabaseAdmin
+    .from("EmailActivity")
+    .select("*")
+    .eq("applicationId", applicationId)
+    .order("receivedAt", { ascending: false });
+
+  return data ?? [];
 }
 
 export async function getEmailActivityById(id: string, userId: string) {
-  return prisma.emailActivity.findFirst({
-    where: { id, application: { userId } },
-    include: {
-      application: { select: { id: true, company: true, position: true } },
-    },
-  });
+  const { data } = await supabaseAdmin
+    .from("EmailActivity")
+    .select("*, Application!inner(id, company, position, userId)")
+    .eq("id", id)
+    .single();
+
+  if (!data) return null;
+
+  const app = (data as typeof data & { Application: { id: string; company: string; position: string; userId: string } }).Application;
+  if (!app || app.userId !== userId) return null;
+
+  const { Application: _, ...rest } = data as typeof data & { Application: unknown };
+  return {
+    ...rest,
+    application: { id: app.id, company: app.company, position: app.position },
+  };
 }

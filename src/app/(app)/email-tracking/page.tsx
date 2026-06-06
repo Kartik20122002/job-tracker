@@ -5,8 +5,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GmailSyncButton } from "@/features/gmail/components/GmailSyncButton";
 import { getGmailConnectionStatus, getRecentEmailActivities } from "@/server/queries/gmail";
-import { formatDate } from "@/lib/utils";
-import { cn } from "@/lib/utils";
+import { formatDate, decodeHtmlEntities, cn } from "@/lib/utils";
 
 export default async function EmailTrackingPage() {
   const session = await auth();
@@ -18,7 +17,7 @@ export default async function EmailTrackingPage() {
   ]);
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-6 w-full">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold">Email Tracking</h1>
@@ -81,7 +80,7 @@ export default async function EmailTrackingPage() {
                   </span>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{email.subject}</p>
-                    <p className="text-xs text-muted-foreground truncate">{email.snippet}</p>
+                    <p className="text-xs text-muted-foreground truncate">{decodeHtmlEntities(email.snippet)}</p>
                   </div>
                   <span className="shrink-0 text-xs text-primary truncate max-w-30">
                     {email.application.company}

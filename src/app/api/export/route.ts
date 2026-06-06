@@ -1,6 +1,6 @@
 import { unparse } from "papaparse";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { supabaseAdmin } from "@/lib/supabase";
 import { formatDate } from "@/lib/utils";
 
 export async function GET() {
@@ -9,12 +9,13 @@ export async function GET() {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const applications = await prisma.application.findMany({
-    where: { userId: session.user.id },
-    orderBy: { appliedDate: "desc" },
-  });
+  const { data: applications } = await supabaseAdmin
+    .from("Application")
+    .select("*")
+    .eq("userId", session.user.id)
+    .order("appliedDate", { ascending: false });
 
-  const rows = applications.map((app) => ({
+  const rows = (applications ?? []).map((app) => ({
     Company: app.company,
     Position: app.position,
     Country: app.country,

@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { ApplicationStatus } from "@/generated/prisma/enums";
+import { ApplicationStatus } from "@/lib/enums";
 import { cn } from "@/lib/utils";
 
 const STATUS_LABELS: Record<ApplicationStatus, string> = {

@@ -13,7 +13,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { ApplicationSource, ApplicationStatus } from "@/generated/prisma/enums";
+import { ApplicationSource, ApplicationStatus } from "@/lib/enums";
 import { STATUS_LABELS } from "@/components/StatusBadge";
 
 const SOURCE_LABELS: Record<ApplicationSource, string> = {

@@ -27,7 +27,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatusBadge } from "@/components/StatusBadge";
 import { deleteApplication, duplicateApplication } from "@/server/actions/applications";
 import { formatDate } from "@/lib/utils";
-import type { Application } from "@/generated/prisma/client";
+import type { Application } from "@/types/database";
 
 interface ApplicationsTableProps {
   applications: Application[];

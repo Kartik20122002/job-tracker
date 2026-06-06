@@ -86,7 +86,7 @@ export function ResumeSection({
           </div>
           <div className="flex gap-1">
             <a
-              href={`/api/resumes/${resumeFilePath}?mode=inline`}
+              href={`/api/resumes/${encodeURIComponent(resumeFilePath)}?mode=inline`}
               target="_blank"
               rel="noopener noreferrer"
               title="Preview"
@@ -95,8 +95,9 @@ export function ResumeSection({
               <Eye className="h-4 w-4" />
             </a>
             <a
-              href={`/api/resumes/${resumeFilePath}`}
-              download
+              href={`/api/resumes/${encodeURIComponent(resumeFilePath)}`}
+              target="_blank"
+              rel="noopener noreferrer"
               title="Download"
               className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-sm font-medium transition-colors hover:bg-muted hover:text-foreground"
             >

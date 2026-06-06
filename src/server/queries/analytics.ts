@@ -1,44 +1,49 @@
 import { format } from "date-fns";
-import { prisma } from "@/lib/db";
-import { ApplicationStatus } from "@/generated/prisma/client";
+import { supabaseAdmin } from "@/lib/supabase";
+import { ApplicationStatus } from "@/lib/enums";
 
 export async function getAnalyticsData(userId: string) {
-  const [applications, statusCounts, sourceCounts, countryCounts] = await Promise.all([
-    prisma.application.findMany({
-      where: { userId },
-      select: { appliedDate: true, status: true },
-      orderBy: { appliedDate: "asc" },
-    }),
-    prisma.application.groupBy({
-      by: ["status"],
-      where: { userId },
-      _count: true,
-    }),
-    prisma.application.groupBy({
-      by: ["source"],
-      where: { userId },
-      _count: true,
-    }),
-    prisma.application.groupBy({
-      by: ["country"],
-      where: { userId },
-      _count: true,
-      orderBy: { _count: { country: "desc" } },
-    }),
-  ]);
+  const { data: applications } = await supabaseAdmin
+    .from("Application")
+    .select("appliedDate, status")
+    .eq("userId", userId)
+    .order("appliedDate", { ascending: true });
 
+  const apps = applications ?? [];
+
+  // Group by month
   const monthMap = new Map<string, number>();
-  for (const app of applications) {
+  for (const app of apps) {
     const key = format(new Date(app.appliedDate), "MMM yyyy");
     monthMap.set(key, (monthMap.get(key) ?? 0) + 1);
   }
-  const byMonth = Array.from(monthMap.entries()).map(([month, count]) => ({
-    month,
-    count,
-  }));
+  const byMonth = Array.from(monthMap.entries()).map(([month, count]) => ({ month, count }));
 
-  const total = applications.length;
-  const interviewedSet = new Set<string>([
+  // Group by status in JS
+  const statusMap = new Map<string, number>();
+  const sourceMap = new Map<string, number>();
+  const countryMap = new Map<string, number>();
+
+  // Need full data for source/country aggregation
+  const { data: fullApps } = await supabaseAdmin
+    .from("Application")
+    .select("status, source, country")
+    .eq("userId", userId);
+
+  for (const app of fullApps ?? []) {
+    statusMap.set(app.status, (statusMap.get(app.status) ?? 0) + 1);
+    sourceMap.set(app.source, (sourceMap.get(app.source) ?? 0) + 1);
+    countryMap.set(app.country, (countryMap.get(app.country) ?? 0) + 1);
+  }
+
+  const byStatus = Array.from(statusMap.entries()).map(([status, count]) => ({ status, count }));
+  const bySource = Array.from(sourceMap.entries()).map(([source, count]) => ({ source, count }));
+  const byCountry = Array.from(countryMap.entries())
+    .map(([country, count]) => ({ country, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+
+  const interviewedSet = new Set([
     ApplicationStatus.Technical_Round_1,
     ApplicationStatus.Technical_Round_2,
     ApplicationStatus.Technical_Round_3,
@@ -47,23 +52,18 @@ export async function getAnalyticsData(userId: string) {
     ApplicationStatus.Offer_Received,
     ApplicationStatus.Accepted,
   ]);
-  const offerSet = new Set<string>([
-    ApplicationStatus.Offer_Received,
-    ApplicationStatus.Accepted,
-  ]);
-  const totalResponded = applications.filter(
-    (a) => a.status !== ApplicationStatus.Applied
-  ).length;
-  const totalInterviewed = applications.filter((a) => interviewedSet.has(a.status)).length;
-  const totalOffers = applications.filter((a) => offerSet.has(a.status)).length;
+  const offerSet = new Set([ApplicationStatus.Offer_Received, ApplicationStatus.Accepted]);
+
+  const total = apps.length;
+  const totalResponded = apps.filter((a) => a.status !== ApplicationStatus.Applied).length;
+  const totalInterviewed = apps.filter((a) => interviewedSet.has(a.status as ApplicationStatus)).length;
+  const totalOffers = apps.filter((a) => offerSet.has(a.status as ApplicationStatus)).length;
 
   return {
     byMonth,
-    byStatus: statusCounts.map((s) => ({ status: s.status, count: s._count })),
-    bySource: sourceCounts.map((s) => ({ source: s.source, count: s._count })),
-    byCountry: countryCounts
-      .slice(0, 10)
-      .map((c) => ({ country: c.country, count: c._count })),
+    byStatus,
+    bySource,
+    byCountry,
     metrics: {
       total,
       responseRate: total > 0 ? Math.round((totalResponded / total) * 100) : 0,
