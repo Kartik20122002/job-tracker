@@ -18,6 +18,7 @@ interface PageProps {
     source?: string;
     sort?: string;
     page?: string;
+    activeOnly?: string;
   }>;
 }
 
@@ -82,6 +83,7 @@ export default async function ApplicationsPage({ searchParams }: PageProps) {
     source: params.source as ApplicationSource | undefined,
     sort: params.sort as "newest" | "oldest" | "company" | undefined,
     page: params.page ? parseInt(params.page) : 1,
+    activeOnly: params.activeOnly === "true",
   });
 
   return (

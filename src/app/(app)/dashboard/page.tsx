@@ -103,7 +103,7 @@ export default async function DashboardPage() {
         {/* Recent Applications */}
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-base">Recent Applications</CardTitle>
+            <CardTitle className="text-base">Active Applications</CardTitle>
             <Link
               href="/applications"
               className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}

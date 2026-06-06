@@ -5,6 +5,14 @@ import type { ApplicationWithHistory } from "@/types/database";
 export { ApplicationSource, ApplicationStatus };
 export const PAGE_SIZE = 20;
 
+export const INACTIVE_STATUSES: ApplicationStatus[] = [
+  ApplicationStatus.Started,
+  ApplicationStatus.Referral_Asked,
+  ApplicationStatus.Rejected,
+  ApplicationStatus.Withdrawn,
+  ApplicationStatus.Accepted,
+];
+
 export interface ApplicationFilters {
   search?: string;
   status?: ApplicationStatus;
@@ -12,10 +20,11 @@ export interface ApplicationFilters {
   source?: ApplicationSource;
   sort?: "newest" | "oldest" | "company";
   page?: number;
+  activeOnly?: boolean;
 }
 
 export async function getApplications(userId: string, filters: ApplicationFilters = {}) {
-  const { search, status, country, source, sort = "newest", page = 1 } = filters;
+  const { search, status, country, source, sort = "newest", page = 1, activeOnly } = filters;
 
   let query = supabaseAdmin
     .from("Application")
@@ -25,7 +34,11 @@ export async function getApplications(userId: string, filters: ApplicationFilter
   if (search) {
     query = query.or(`company.ilike.%${search}%,position.ilike.%${search}%`);
   }
-  if (status) query = query.eq("status", status);
+  if (status) {
+    query = query.eq("status", status);
+  } else if (activeOnly) {
+    query = query.not("status", "in", `(${INACTIVE_STATUSES.join(",")})`);
+  }
   if (country) query = query.ilike("country", `%${country}%`);
   if (source) query = query.eq("source", source);
 
@@ -76,6 +89,7 @@ export async function getDashboardData(userId: string) {
         .from("Application")
         .select("*")
         .eq("userId", userId)
+        .not("status", "in", `(${INACTIVE_STATUSES.join(",")})`)
         .order("appliedDate", { ascending: false })
         .limit(5),
       supabaseAdmin

@@ -57,12 +57,15 @@ export function ApplicationFilters() {
     return () => clearTimeout(timer);
   }, [search]);
 
+  const activeOnly = searchParams.get("activeOnly") === "true";
+
   const hasFilters =
     searchParams.get("search") ||
     searchParams.get("status") ||
     searchParams.get("country") ||
     searchParams.get("source") ||
-    searchParams.get("sort");
+    searchParams.get("sort") ||
+    activeOnly;
 
   function clearFilters() {
     setSearch("");
@@ -130,6 +133,14 @@ export function ApplicationFilters() {
           ))}
         </SelectContent>
       </Select>
+
+      <Button
+        variant={activeOnly ? "default" : "outline"}
+        size="sm"
+        onClick={() => updateParam("activeOnly", activeOnly ? null : "true")}
+      >
+        Active Only
+      </Button>
 
       {hasFilters && (
         <Button variant="ghost" size="sm" onClick={clearFilters}>
