@@ -95,6 +95,8 @@ export async function getDashboardData(userId: string) {
   const statusCounts = Array.from(countMap.entries()).map(([status, count]) => ({ status: status as ApplicationStatus, count }));
 
   const inactiveStatuses = new Set<ApplicationStatus>([
+    ApplicationStatus.Started,
+    ApplicationStatus.Referral_Asked,
     ApplicationStatus.Rejected,
     ApplicationStatus.Withdrawn,
     ApplicationStatus.Accepted,
