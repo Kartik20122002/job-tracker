@@ -214,7 +214,7 @@ export default async function ApplicationDetailPage({ params }: PageProps) {
                 applicationId={id}
                 resumeFileName={application.resumeFileName}
                 resumeFilePath={application.resumeFilePath}
-                resumeUploadDate={application.resumeUploadDate}
+                resumeUploadDate={application.resumeUploadDate ? new Date(application.resumeUploadDate) : null}
                 isUploadAllowed={isUploadAllowed}
               />
             </CardContent>

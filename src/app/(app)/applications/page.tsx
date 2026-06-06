@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ApplicationsTable } from "@/features/applications/components/ApplicationsTable";
 import { ApplicationFilters } from "@/features/applications/components/ApplicationFilters";
 import { getApplications, PAGE_SIZE } from "@/server/queries/applications";
-import { type ApplicationSource, type ApplicationStatus } from "@/types/database";
+import { type ApplicationSource, type ApplicationStatus } from "@/lib/enums";
 import { cn } from "@/lib/utils";
 
 interface PageProps {

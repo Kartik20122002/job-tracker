@@ -92,15 +92,15 @@ export async function getDashboardData(userId: string) {
   for (const { status } of allApps ?? []) {
     countMap.set(status, (countMap.get(status) ?? 0) + 1);
   }
-  const statusCounts = Array.from(countMap.entries()).map(([status, count]) => ({ status, count }));
+  const statusCounts = Array.from(countMap.entries()).map(([status, count]) => ({ status: status as ApplicationStatus, count }));
 
-  const inactiveStatuses = new Set([
+  const inactiveStatuses = new Set<ApplicationStatus>([
     ApplicationStatus.Rejected,
     ApplicationStatus.Withdrawn,
     ApplicationStatus.Accepted,
   ]);
-  const rejectedStatuses = new Set([ApplicationStatus.Rejected, ApplicationStatus.Withdrawn]);
-  const offerStatuses = new Set([ApplicationStatus.Offer_Received, ApplicationStatus.Accepted]);
+  const rejectedStatuses = new Set<ApplicationStatus>([ApplicationStatus.Rejected, ApplicationStatus.Withdrawn]);
+  const offerStatuses = new Set<ApplicationStatus>([ApplicationStatus.Offer_Received, ApplicationStatus.Accepted]);
 
   const total = statusCounts.reduce((s, x) => s + x.count, 0);
   const active = statusCounts.filter((x) => !inactiveStatuses.has(x.status as ApplicationStatus)).reduce((s, x) => s + x.count, 0);

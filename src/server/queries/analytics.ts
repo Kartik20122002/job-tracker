@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 import { supabaseAdmin } from "@/lib/supabase";
-import { ApplicationStatus } from "@/lib/enums";
+import { ApplicationSource, ApplicationStatus } from "@/lib/enums";
 
 export async function getAnalyticsData(userId: string) {
   const { data: applications } = await supabaseAdmin
@@ -36,14 +36,14 @@ export async function getAnalyticsData(userId: string) {
     countryMap.set(app.country, (countryMap.get(app.country) ?? 0) + 1);
   }
 
-  const byStatus = Array.from(statusMap.entries()).map(([status, count]) => ({ status, count }));
-  const bySource = Array.from(sourceMap.entries()).map(([source, count]) => ({ source, count }));
+  const byStatus = Array.from(statusMap.entries()).map(([status, count]) => ({ status: status as ApplicationStatus, count }));
+  const bySource = Array.from(sourceMap.entries()).map(([source, count]) => ({ source: source as ApplicationSource, count }));
   const byCountry = Array.from(countryMap.entries())
     .map(([country, count]) => ({ country, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 10);
 
-  const interviewedSet = new Set([
+  const interviewedSet = new Set<ApplicationStatus>([
     ApplicationStatus.Technical_Round_1,
     ApplicationStatus.Technical_Round_2,
     ApplicationStatus.Technical_Round_3,
@@ -52,7 +52,7 @@ export async function getAnalyticsData(userId: string) {
     ApplicationStatus.Offer_Received,
     ApplicationStatus.Accepted,
   ]);
-  const offerSet = new Set([ApplicationStatus.Offer_Received, ApplicationStatus.Accepted]);
+  const offerSet = new Set<ApplicationStatus>([ApplicationStatus.Offer_Received, ApplicationStatus.Accepted]);
 
   const total = apps.length;
   const totalResponded = apps.filter((a) => a.status !== ApplicationStatus.Applied).length;

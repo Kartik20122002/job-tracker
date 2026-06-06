@@ -64,7 +64,7 @@ export default async function EditApplicationPage({ params }: PageProps) {
         }}
         resumeFileName={application.resumeFileName}
         resumeFilePath={application.resumeFilePath}
-        resumeUploadDate={application.resumeUploadDate}
+        resumeUploadDate={application.resumeUploadDate ? new Date(application.resumeUploadDate) : null}
       />
     </div>
   );

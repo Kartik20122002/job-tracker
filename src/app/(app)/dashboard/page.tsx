@@ -160,7 +160,7 @@ export default async function DashboardPage() {
               isConnected={gmail.isConnected}
               totalMatched={totalMatched}
               lastSyncAt={gmail.lastSync?.completedAt ?? null}
-              recentEmails={recentEmails}
+              recentEmails={recentEmails.map((e) => ({ ...e, receivedAt: new Date(e.receivedAt) }))}
             />
           </CardContent>
         </Card>
