@@ -27,6 +27,8 @@ const SOURCE_LABELS: Record<ApplicationSource, string> = {
 };
 
 const STATUS_COLORS: Record<ApplicationStatus, string> = {
+  Started: "#a1a1aa",
+  Referral_Asked: "#eab308",
   Applied: "#94a3b8",
   OA_Scheduled: "#60a5fa",
   OA_Completed: "#3b82f6",
@@ -40,7 +42,6 @@ const STATUS_COLORS: Record<ApplicationStatus, string> = {
   Accepted: "#22c55e",
   Rejected: "#ef4444",
   Withdrawn: "#f97316",
-  Referral_Asked: "#eab308",
 };
 
 interface AnalyticsData {

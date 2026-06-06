@@ -3,6 +3,8 @@ import { ApplicationStatus } from "@/lib/enums";
 import { cn } from "@/lib/utils";
 
 const STATUS_LABELS: Record<ApplicationStatus, string> = {
+  Started: "Started",
+  Referral_Asked: "Referral Asked",
   Applied: "Applied",
   OA_Scheduled: "OA Scheduled",
   OA_Completed: "OA Completed",
@@ -16,10 +18,11 @@ const STATUS_LABELS: Record<ApplicationStatus, string> = {
   Accepted: "Accepted",
   Rejected: "Rejected",
   Withdrawn: "Withdrawn",
-  Referral_Asked: "Referral Asked",
 };
 
 const STATUS_COLORS: Record<ApplicationStatus, string> = {
+  Started: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
+  Referral_Asked: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300",
   Applied: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
   OA_Scheduled: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
   OA_Completed: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
@@ -33,7 +36,6 @@ const STATUS_COLORS: Record<ApplicationStatus, string> = {
   Accepted: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
   Rejected: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
   Withdrawn: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
-  Referral_Asked: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300",
 };
 
 interface StatusBadgeProps {

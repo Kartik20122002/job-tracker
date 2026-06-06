@@ -1,4 +1,6 @@
 export const ApplicationStatus = {
+  Started: "Started",
+  Referral_Asked: "Referral_Asked",
   Applied: "Applied",
   OA_Scheduled: "OA_Scheduled",
   OA_Completed: "OA_Completed",
@@ -12,7 +14,6 @@ export const ApplicationStatus = {
   Accepted: "Accepted",
   Rejected: "Rejected",
   Withdrawn: "Withdrawn",
-  Referral_Asked: "Referral_Asked",
 } as const;
 export type ApplicationStatus = (typeof ApplicationStatus)[keyof typeof ApplicationStatus];
 

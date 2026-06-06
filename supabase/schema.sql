@@ -1,6 +1,8 @@
 -- ─── Enums ───────────────────────────────────────────────────────────────────
 
 CREATE TYPE "ApplicationStatus" AS ENUM (
+  'Started',
+  'Referral_Asked',
   'Applied',
   'OA_Scheduled',
   'OA_Completed',
@@ -13,8 +15,7 @@ CREATE TYPE "ApplicationStatus" AS ENUM (
   'Offer_Received',
   'Accepted',
   'Rejected',
-  'Withdrawn',
-  'Referral_Asked'
+  'Withdrawn'
 );
 
 CREATE TYPE "ApplicationSource" AS ENUM (
