@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
-import { refreshAccessToken, searchGmailMessages, getGmailMessage, GmailApiError } from "@/lib/gmail";
+import {
+  refreshAccessToken,
+  searchGmailMessages,
+  getGmailMessage,
+  getGmailProfile,
+  getGmailHistory,
+  GmailApiError,
+} from "@/lib/gmail";
 import { ApplicationStatus } from "@/lib/enums";
 import type { MatchedByValue } from "@/lib/gmail-matcher";
 import type { ParsedEmail } from "@/lib/gmail";
@@ -101,6 +108,155 @@ export function matchEmailToApp(
   return null;
 }
 
+// ─── Shared fetch + match logic ───────────────────────────────────────────────
+
+type Candidate = { applicationId: string; score: number; matchedBy: MatchedByValue; parsed: ParsedEmail };
+
+async function fetchAndMatch(
+  accessToken: string,
+  allIds: string[],
+  maps: AppMaps
+): Promise<{ emailsScanned: number; emailsMatched: number }> {
+  const { data: alreadySynced } = await supabaseAdmin
+    .from("EmailActivity")
+    .select("gmailMessageId")
+    .in("gmailMessageId", allIds);
+
+  const syncedSet = new Set((alreadySynced ?? []).map((e) => e.gmailMessageId));
+  const newIds = allIds.filter((id) => !syncedSet.has(id));
+
+  const BATCH = 10;
+  const candidates = new Map<string, Candidate>();
+
+  for (let i = 0; i < newIds.length; i += BATCH) {
+    const batch = newIds.slice(i, i + BATCH);
+    await Promise.all(
+      batch.map(async (messageId) => {
+        const parsed = await getGmailMessage(accessToken, messageId);
+        if (!parsed) return;
+
+        const match = matchEmailToApp(parsed, maps);
+        if (!match) return;
+
+        const existing = candidates.get(messageId);
+        if (!existing || match.score > existing.score) {
+          candidates.set(messageId, {
+            applicationId: match.app.id,
+            score: match.score,
+            matchedBy: match.matchedBy,
+            parsed,
+          });
+        }
+      })
+    );
+  }
+
+  let emailsMatched = 0;
+  if (candidates.size > 0) {
+    const toCreate = Array.from(candidates.entries()).map(([messageId, c]) => ({
+      applicationId: c.applicationId,
+      gmailMessageId: messageId,
+      gmailThreadId: c.parsed.threadId,
+      sender: c.parsed.sender,
+      senderEmail: c.parsed.senderEmail,
+      subject: c.parsed.subject,
+      snippet: c.parsed.snippet,
+      receivedAt: c.parsed.receivedAt.toISOString(),
+      matchedBy: c.matchedBy,
+    }));
+
+    const { data: inserted } = await supabaseAdmin
+      .from("EmailActivity")
+      .upsert(toCreate, { onConflict: "gmailMessageId", ignoreDuplicates: true })
+      .select("id");
+
+    emailsMatched = inserted?.length ?? 0;
+  }
+
+  return { emailsScanned: newIds.length, emailsMatched };
+}
+
+// ─── Full sync ────────────────────────────────────────────────────────────────
+
+async function runFullSync(
+  accessToken: string,
+  userId: string,
+  maps: AppMaps
+): Promise<{ emailsScanned: number; emailsMatched: number }> {
+  const queries = buildQueries(maps);
+  const LIST_BATCH = 50;
+  const allIds: string[] = [];
+  const seen = new Set<string>();
+
+  for (let i = 0; i < queries.length; i += LIST_BATCH) {
+    const round = queries.slice(i, i + LIST_BATCH);
+    const roundResults = await Promise.all(
+      round.map(async (query) => {
+        try {
+          return await searchGmailMessages(accessToken, query, 50);
+        } catch (e) {
+          if (e instanceof GmailApiError && e.statusCode === 401) throw e;
+          return [];
+        }
+      })
+    );
+    for (const stubs of roundResults) {
+      for (const s of stubs) {
+        if (!seen.has(s.id)) {
+          seen.add(s.id);
+          allIds.push(s.id);
+        }
+      }
+    }
+  }
+
+  const result = await fetchAndMatch(accessToken, allIds, maps);
+
+  const profile = await getGmailProfile(accessToken);
+  await supabaseAdmin
+    .from("GmailConnection")
+    .update({ historyId: profile.historyId })
+    .eq("userId", userId);
+
+  return result;
+}
+
+// ─── Incremental sync ─────────────────────────────────────────────────────────
+
+async function runIncrementalSync(
+  accessToken: string,
+  userId: string,
+  startHistoryId: string,
+  maps: AppMaps
+): Promise<{ emailsScanned: number; emailsMatched: number }> {
+  const allIds: string[] = [];
+  const seen = new Set<string>();
+  let pageToken: string | undefined;
+  let newHistoryId = startHistoryId;
+
+  do {
+    const histResult = await getGmailHistory(accessToken, startHistoryId, pageToken);
+    for (const id of histResult.messageIds) {
+      if (!seen.has(id)) {
+        seen.add(id);
+        allIds.push(id);
+      }
+    }
+    newHistoryId = histResult.newHistoryId;
+    pageToken = histResult.nextPageToken;
+  } while (pageToken);
+
+  await supabaseAdmin
+    .from("GmailConnection")
+    .update({ historyId: newHistoryId })
+    .eq("userId", userId);
+
+  if (allIds.length === 0) return { emailsScanned: 0, emailsMatched: 0 };
+  return await fetchAndMatch(accessToken, allIds, maps);
+}
+
+// ─── POST handler ─────────────────────────────────────────────────────────────
+
 export async function POST() {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -109,7 +265,7 @@ export async function POST() {
 
   const { data: connection } = await supabaseAdmin
     .from("GmailConnection")
-    .select("accessToken, refreshToken")
+    .select("accessToken, refreshToken, historyId")
     .eq("userId", userId)
     .single();
 
@@ -175,92 +331,42 @@ export async function POST() {
     }
 
     const maps = buildMaps(applications);
-    const queries = buildQueries(maps);
+    let result: { emailsScanned: number; emailsMatched: number };
 
-    const LIST_BATCH = 50;
-    const allStubs = new Map<string, string>();
-
-    for (let i = 0; i < queries.length; i += LIST_BATCH) {
-      const round = queries.slice(i, i + LIST_BATCH);
-      const roundResults = await Promise.all(
-        round.map(async (query) => {
-          try {
-            return await searchGmailMessages(accessToken, query, 50);
-          } catch (e) {
-            if (e instanceof GmailApiError && e.statusCode === 401) throw e;
-            return [];
-          }
-        })
-      );
-      for (const stubs of roundResults) {
-        for (const s of stubs) {
-          if (!allStubs.has(s.id)) allStubs.set(s.id, s.threadId);
+    if (connection.historyId) {
+      try {
+        result = await runIncrementalSync(accessToken, userId, connection.historyId, maps);
+      } catch (e) {
+        if (e instanceof GmailApiError && e.statusCode === 404) {
+          await supabaseAdmin
+            .from("GmailConnection")
+            .update({ historyId: null })
+            .eq("userId", userId);
+          result = await runFullSync(accessToken, userId, maps);
+        } else {
+          throw e;
         }
       }
+    } else {
+      result = await runFullSync(accessToken, userId, maps);
     }
-
-    const allIds = Array.from(allStubs.keys());
-    const { data: alreadySynced } = await supabaseAdmin
-      .from("EmailActivity")
-      .select("gmailMessageId")
-      .in("gmailMessageId", allIds);
-
-    const syncedSet = new Set((alreadySynced ?? []).map((e) => e.gmailMessageId));
-    const newStubs = allIds.filter((id) => !syncedSet.has(id));
-
-    const BATCH = 10;
-    type Candidate = { applicationId: string; threadId: string; score: number; matchedBy: MatchedByValue; parsed: ParsedEmail };
-    const candidates = new Map<string, Candidate>();
-
-    for (let i = 0; i < newStubs.length; i += BATCH) {
-      const batch = newStubs.slice(i, i + BATCH);
-      await Promise.all(
-        batch.map(async (messageId) => {
-          const threadId = allStubs.get(messageId)!;
-          const parsed = await getGmailMessage(accessToken, messageId);
-          if (!parsed) return;
-
-          const match = matchEmailToApp(parsed, maps);
-          if (!match) return;
-
-          const existing = candidates.get(messageId);
-          if (!existing || match.score > existing.score) {
-            candidates.set(messageId, { applicationId: match.app.id, threadId, score: match.score, matchedBy: match.matchedBy, parsed });
-          }
-        })
-      );
-    }
-
-    let emailsMatched = 0;
-    if (candidates.size > 0) {
-      const toCreate = Array.from(candidates.entries()).map(([messageId, c]) => ({
-        applicationId: c.applicationId,
-        gmailMessageId: messageId,
-        gmailThreadId: c.threadId,
-        sender: c.parsed.sender,
-        senderEmail: c.parsed.senderEmail,
-        subject: c.parsed.subject,
-        snippet: c.parsed.snippet,
-        receivedAt: c.parsed.receivedAt.toISOString(),
-        matchedBy: c.matchedBy,
-      }));
-
-      const { data: inserted } = await supabaseAdmin
-        .from("EmailActivity")
-        .upsert(toCreate, { onConflict: "gmailMessageId", ignoreDuplicates: true })
-        .select("id");
-
-      emailsMatched = inserted?.length ?? 0;
-    }
-
-    const emailsScanned = newStubs.length;
 
     await supabaseAdmin
       .from("GmailSync")
-      .update({ status: "SUCCESS", completedAt: new Date().toISOString(), emailsScanned, emailsMatched })
+      .update({
+        status: "SUCCESS",
+        completedAt: new Date().toISOString(),
+        emailsScanned: result.emailsScanned,
+        emailsMatched: result.emailsMatched,
+      })
       .eq("id", syncRecord.id);
 
-    return NextResponse.json({ status: "SUCCESS", emailsScanned, emailsMatched, duration: Date.now() - startTime });
+    return NextResponse.json({
+      status: "SUCCESS",
+      emailsScanned: result.emailsScanned,
+      emailsMatched: result.emailsMatched,
+      duration: Date.now() - startTime,
+    });
   } catch (err) {
     await failSync();
     return NextResponse.json(

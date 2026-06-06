@@ -76,6 +76,7 @@ export type GmailConnection = {
   gmailAddress: string;
   accessToken: string;
   refreshToken: string;
+  historyId: string | null;
   connectedAt: string;
   updatedAt: string;
 };

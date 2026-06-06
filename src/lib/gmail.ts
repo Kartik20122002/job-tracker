@@ -97,7 +97,9 @@ export async function refreshAccessToken(refreshToken: string): Promise<string> 
   return data.access_token;
 }
 
-export async function getGmailProfile(accessToken: string): Promise<{ emailAddress: string }> {
+export async function getGmailProfile(
+  accessToken: string
+): Promise<{ emailAddress: string; historyId: string }> {
   const response = await fetch(`${GMAIL_API_BASE}/profile`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
@@ -107,6 +109,51 @@ export async function getGmailProfile(accessToken: string): Promise<{ emailAddre
   }
 
   return response.json();
+}
+
+export interface HistoryResult {
+  messageIds: string[];
+  newHistoryId: string;
+  nextPageToken?: string;
+}
+
+export async function getGmailHistory(
+  accessToken: string,
+  startHistoryId: string,
+  pageToken?: string
+): Promise<HistoryResult> {
+  const params = new URLSearchParams({
+    startHistoryId,
+    historyTypes: "messageAdded",
+    maxResults: "500",
+  });
+  if (pageToken) params.set("pageToken", pageToken);
+
+  const response = await fetch(`${GMAIL_API_BASE}/history?${params}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new GmailApiError(
+      response.status,
+      body?.error?.message ?? "Gmail history fetch failed"
+    );
+  }
+
+  const data = await response.json();
+  const messageIds: string[] = [];
+  for (const record of data.history ?? []) {
+    for (const added of record.messagesAdded ?? []) {
+      if (added.message?.id) messageIds.push(added.message.id);
+    }
+  }
+
+  return {
+    messageIds,
+    newHistoryId: data.historyId ?? startHistoryId,
+    nextPageToken: data.nextPageToken,
+  };
 }
 
 export async function searchGmailMessages(

@@ -148,6 +148,7 @@ CREATE TABLE "GmailConnection" (
   "gmailAddress" TEXT        NOT NULL,
   "accessToken"  TEXT        NOT NULL,
   "refreshToken" TEXT        NOT NULL,
+  "historyId"    TEXT,
   "connectedAt"  TIMESTAMPTZ NOT NULL DEFAULT now(),
   "updatedAt"    TIMESTAMPTZ NOT NULL DEFAULT now(),
 
