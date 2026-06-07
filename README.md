@@ -1,65 +1,103 @@
 # Job Tracker
 
-A full-stack job application tracking system built with Next.js 16, PostgreSQL, and Gmail integration. Designed for active job seekers who want a single source of truth across all their applications, recruiter communications, and interview pipeline.
+A full-stack job application tracking system built with Next.js, Supabase, and Gmail integration. Designed for active job seekers who want a single source of truth across all their applications, recruiter communications, interview pipeline, and company research.
 
 ## Features
 
 ### Application Management
-- Track applications across 13 granular statuses — from `Applied` through `OA`, `Technical Rounds`, `HR Round`, `Offer Received`, to `Accepted` / `Rejected` / `Withdrawn`
-- Full status timeline with timestamped history on every application
-- Store recruiter details (name, email, LinkedIn), job links, salary targets, visa/relocation preferences
-- Resume upload and management per application
-- Markdown-supported notes and interview feedback fields
-- Filter by status, source, country; debounced search; sort by date or company
 
-### Gmail Integration
-- OAuth 2.0 with `gmail.readonly` scope — read-only, no write access, no send, no delete
-- Tokens stored server-side only, never exposed to the frontend
-- Deterministic email matching engine using O(1) lookup maps:
+- Track applications with 15 granular statuses — from `Started` and `Referral Asked` through `OA`, `Technical Rounds 1–3`, `Managerial Round`, `HR Round`, `Offer Received`, to `Accepted` / `Rejected` / `Withdrawn`
+- Full status timeline with timestamped history on every application
+- Store recruiter details: name, email, LinkedIn
+- Job metadata: source (LinkedIn, Naukri, Indeed, Company Website, Referral, Glassdoor, Other), type (Remote / Hybrid / Onsite), country, location, job link
+- Salary target with currency (INR, USD, EUR, GBP), visa sponsorship, relocation, and referral flags
+- Notes and interview feedback per application
+- Filter by status, source, country; active-only toggle; debounced search; sort by date or company
+- CSV export of all applications
+- Duplicate application shortcut
+
+### Resume Management _(Pro)_
+
+- Upload a PDF resume (max 1 MB) per application
+- Stored in Supabase Storage, served securely via a signed API route
+- Inline preview and download from the application detail page
+
+### Company Directory
+
+- Global shared directory of companies, visible to all authenticated users
+- Columns: Company Name, Company Type (Product Based / Service Based / Other), Career Page, LinkedIn
+- Search by company name
+- Career page and LinkedIn links open in a new tab
+- FREE users can browse the first page of results; page 2+ requires Pro with an upgrade prompt
+- Pro users can add, edit, and delete companies via inline dialogs with confirmation on delete
+- Company names are unique across the directory
+
+### Gmail Integration _(Pro)_
+
+- OAuth 2.0 with `gmail.readonly` scope — read-only, no write, no send, no delete
+- Access and refresh tokens stored server-side only, never exposed to the frontend
+- Deterministic email matching engine using O(1) lookup maps across all applications:
   - Exact recruiter email match (score 100)
   - Sender domain match (score 80)
   - Company name in subject (score 70)
   - Company name in snippet (score 60)
   - Position title in subject (score 50)
-- Optimised sync strategy: recruiter email batch queries + one broad keyword query — scales to 200+ applications without hitting Gmail's per-user rate limit (250 quota units/sec)
-- List queries run in parallel batches of 50 (50 × 5 = 250 units/round, exactly at the limit)
-- `messages.get` calls run in parallel batches of 10 (10 × 20 = 200 units/sec, safely under the limit)
+- Optimised sync strategy: recruiter email batch queries + one broad keyword query, scales to 200+ applications without hitting Gmail's per-user rate limit
+- List queries run in parallel batches of 50; `messages.get` calls in batches of 10
 - DB deduplication before any `messages.get` call — repeat syncs are near-instant
 - 30-minute sync cooldown to prevent quota abuse
 - Per-application "Fetch latest" for on-demand recruiter email lookup
-- Email detail page with full body parsing (text/plain preferred, HTML stripped as fallback) and direct "Open in Gmail" link
 
 ### Analytics & Dashboard
-- Dashboard with summary stats, recent applications, upcoming interviews, status breakdown chart
-- Recruiter Updates widget showing latest matched emails
-- Dedicated Email Tracking page with last 50 matched emails
 
-### Architecture
-- **Next.js 16 App Router** with server components, server actions, and API routes
-- **PostgreSQL** with Prisma ORM (v7, adapter pattern)
-- **NextAuth v5** with JWT strategy and credential-based auth
-- **Docker Compose** for both local development (Postgres only) and production (full stack)
-- File uploads served from a persistent Docker volume
+- Dashboard with summary stats: Total, Active, Rejected, Offers
+- Status breakdown chart across all applications
+- Recent active applications and upcoming interviews widgets
+- Recruiter Updates widget showing latest matched emails (Pro)
+- Dedicated Email Tracking page with the last 50 matched recruiter emails across all applications (Pro)
+
+### Auth
+
+- Credential-based signup and login (email or username + password)
+- Passwords hashed with bcrypt
+- JWT session strategy via NextAuth v5
+
+### Subscription Tiers
+
+Access is controlled via the `PRO_USERS` environment variable (a comma-separated list of email addresses).
+
+| Feature | FREE | PRO |
+|---|---|---|
+| Application tracking | All | All |
+| Company directory (page 1) | Yes | Yes |
+| Company directory (all pages) | — | Yes |
+| Add / Edit / Delete companies | — | Yes |
+| Resume upload | — | Yes |
+| Gmail integration | — | Yes |
+| Email tracking | — | Yes |
+| Analytics | Yes | Yes |
+| CSV export | Yes | Yes |
 
 ## Tech Stack
 
 | Layer | Technology |
 |---|---|
-| Framework | Next.js 16 (App Router) |
+| Framework | Next.js (App Router) |
 | Language | TypeScript |
-| Database | PostgreSQL 16 |
-| ORM | Prisma v7 with `@prisma/adapter-pg` |
-| Auth | NextAuth v5 beta (JWT) |
-| UI Components | Base UI (shadcn) + Tailwind CSS v4 |
+| Database | Supabase (PostgreSQL 17) |
+| Auth | NextAuth v5 (JWT, Credentials) |
+| UI Components | Base UI + shadcn/ui + Tailwind CSS v4 |
+| Forms | React Hook Form + Zod |
 | Charts | Recharts |
 | Email | Gmail API v1 (native fetch, no SDK) |
-| Containerisation | Docker + Docker Compose |
+| Storage | Supabase Storage (resumes) |
 
 ## Local Development
 
 ### Prerequisites
+
 - Node.js 20+
-- Docker Desktop
+- A [Supabase](https://supabase.com) project
 
 ### Setup
 
@@ -69,55 +107,70 @@ git clone <repo-url>
 cd job-tracker
 
 # 2. Copy and fill environment variables
-cp .env.example .env
+cp .env.example .env.local
 
-# 3. Start Postgres, run migrations, and start Next.js
-npm run docker-dev
+# 3. Apply the database schema to your Supabase project
+#    Run supabase/schema.sql in the Supabase SQL editor
+
+# 4. Install dependencies and start the dev server
+npm install
+npm run dev
 ```
 
-The `docker-dev` script starts Postgres in Docker (waits for healthcheck), deploys migrations, generates the Prisma client, then starts the Next.js dev server on `http://localhost:3000`.
+The app will be available at `http://localhost:3000`.
 
 ### Gmail Integration Setup
 
-Follow `instructions.md` for the full step-by-step guide to set up a Google Cloud project, OAuth credentials, and connect your Gmail account.
-
-## Production Deployment
-
-See `DEPLOY.md` for a complete guide to deploying on a VPS (Oracle Cloud / any Ubuntu server) with Nginx, Docker Compose, and a custom domain via Cloudflare.
+1. Create a project in [Google Cloud Console](https://console.cloud.google.com)
+2. Enable the Gmail API
+3. Create OAuth 2.0 credentials (Web application)
+4. Add `http://localhost:3000/api/gmail/callback` as an authorised redirect URI
+5. Copy the Client ID and Secret into `.env.local`
 
 ## Environment Variables
 
 | Variable | Description |
 |---|---|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `NEXTAUTH_SECRET` | Random secret for JWT signing |
-| `NEXTAUTH_URL` | Full URL of the deployed app |
+| `NEXTAUTH_SECRET` | Random secret for JWT signing — generate with `openssl rand -base64 32` |
+| `NEXTAUTH_URL` | Full URL of the app (e.g. `http://localhost:3000`) |
+| `SUPABASE_URL` | Your Supabase project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server-side only) |
 | `GOOGLE_CLIENT_ID` | Google OAuth client ID |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
 | `GOOGLE_REDIRECT_URI` | OAuth callback URL (`/api/gmail/callback`) |
-| `UPLOAD_DIR` | Directory for resume file uploads |
+| `PRO_USERS` | Comma-separated list of Pro user email addresses |
 
 ## Project Structure
 
 ```
 src/
 ├── app/
-│   ├── (app)/              # Authenticated app routes
+│   ├── (app)/                  # Authenticated routes
 │   │   ├── dashboard/
-│   │   ├── applications/
+│   │   ├── applications/       # List, detail, new, edit
 │   │   ├── analytics/
+│   │   ├── companies/          # Global company directory
 │   │   ├── email-tracking/
 │   │   └── settings/
 │   └── api/
-│       └── gmail/          # connect, callback, disconnect, status, sync, sync-application
+│       ├── auth/               # NextAuth handler
+│       ├── gmail/              # connect, callback, disconnect, status, sync, sync-application
+│       ├── resumes/            # upload, download
+│       └── export/             # CSV export
 ├── features/
-│   ├── applications/       # Application form, filters, table, timeline
-│   ├── dashboard/          # Charts
-│   └── gmail/              # Gmail components and sync logic
+│   ├── applications/           # Form, filters, table, timeline, resume section
+│   ├── companies/              # Companies table with add/edit/delete dialogs
+│   ├── analytics/              # Charts
+│   └── gmail/                  # Gmail connection card, email section
 ├── lib/
-│   ├── gmail.ts            # Gmail API client (native fetch)
-│   └── gmail-matcher.ts    # Deterministic matching engine
-└── server/
-    ├── actions/            # Server actions (create, update, delete)
-    └── queries/            # DB read queries
+│   ├── auth.ts                 # NextAuth config
+│   ├── pro-access.ts           # Pro tier check
+│   ├── enums.ts                # Shared enums
+│   └── validations/            # Zod schemas
+├── server/
+│   ├── actions/                # Server actions (create, update, delete)
+│   └── queries/                # DB read queries
+└── supabase/
+    ├── schema.sql              # Full database schema
+    └── migrations/             # Incremental migration files
 ```
