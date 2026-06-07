@@ -29,7 +29,7 @@ export async function createCompany(data: CompanyInput): Promise<ActionResult<{ 
 
   const { data: company, error } = await supabaseAdmin
     .from("Company")
-    .insert({ ...rest, linkedinUrl: linkedinUrl || null })
+    .insert({ ...rest, linkedinUrl: linkedinUrl || null, tags: rest.tags ?? [] })
     .select("id")
     .single();
 
@@ -56,7 +56,7 @@ export async function updateCompany(id: string, data: CompanyInput): Promise<Act
 
   const { error } = await supabaseAdmin
     .from("Company")
-    .update({ ...rest, linkedinUrl: linkedinUrl || null })
+    .update({ ...rest, linkedinUrl: linkedinUrl || null, tags: rest.tags ?? [] })
     .eq("id", id);
 
   if (error) {

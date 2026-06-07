@@ -106,6 +106,7 @@ export type Company = {
   companyType: CompanyType;
   careerPageUrl: string;
   linkedinUrl: string | null;
+  tags: string[];
   createdAt: string;
   updatedAt: string;
 };

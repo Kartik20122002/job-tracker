@@ -4,15 +4,41 @@ import { auth } from "@/lib/auth";
 import { isProUser } from "@/lib/pro-access";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { CompaniesTable } from "@/features/companies/components/CompaniesTable";
 import { getCompanies, COMPANY_PAGE_SIZE } from "@/server/queries/companies";
+import { COMPANY_TAGS } from "@/lib/validations/company";
+import { CompanyType } from "@/lib/enums";
 import { cn } from "@/lib/utils";
 
 interface PageProps {
   searchParams: Promise<{
     search?: string;
     page?: string;
+    companyType?: string;
+    tag?: string;
   }>;
+}
+
+const COMPANY_TYPE_OPTIONS = [
+  { value: CompanyType.PRODUCT_BASED, label: "Product Based" },
+  { value: CompanyType.SERVICE_BASED, label: "Service Based" },
+  { value: CompanyType.OTHER, label: "Other" },
+];
+
+function buildUrl(searchParams: Record<string, string | undefined>, overrides: Record<string, string | undefined>) {
+  const params = new URLSearchParams();
+  const merged = { ...searchParams, ...overrides };
+  for (const [k, v] of Object.entries(merged)) {
+    if (v) params.set(k, v);
+  }
+  return `/companies?${params.toString()}`;
 }
 
 function PaginationBar({
@@ -44,15 +70,6 @@ function PaginationBar({
     );
   }
 
-  function buildUrl(p: number) {
-    const params = new URLSearchParams();
-    for (const [k, v] of Object.entries(searchParams)) {
-      if (v) params.set(k, v);
-    }
-    params.set("page", p.toString());
-    return `/companies?${params.toString()}`;
-  }
-
   return (
     <div className="flex items-center justify-between text-sm text-muted-foreground">
       <span>
@@ -61,7 +78,7 @@ function PaginationBar({
       <div className="flex gap-2">
         {page > 1 && (
           <Link
-            href={buildUrl(page - 1)}
+            href={buildUrl(searchParams, { page: (page - 1).toString() })}
             className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
           >
             Previous
@@ -69,7 +86,7 @@ function PaginationBar({
         )}
         {page < totalPages && (
           <Link
-            href={buildUrl(page + 1)}
+            href={buildUrl(searchParams, { page: (page + 1).toString() })}
             className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
           >
             Next
@@ -91,7 +108,11 @@ export default async function CompaniesPage({ searchParams }: PageProps) {
   const { companies, total } = await getCompanies({
     search: params.search,
     page,
+    companyType: params.companyType,
+    tag: params.tag,
   });
+
+  const activeFilters = [params.companyType, params.tag].filter(Boolean).length;
 
   return (
     <div className="space-y-4">
@@ -102,8 +123,8 @@ export default async function CompaniesPage({ searchParams }: PageProps) {
         </div>
       </div>
 
-      <form method="get" action="/companies" className="flex gap-2">
-        <div className="relative flex-1 max-w-sm">
+      <form method="get" action="/companies" className="flex flex-wrap gap-2">
+        <div className="relative flex-1 min-w-48 max-w-sm">
           <Search className="absolute left-2.5 top-2 h-4 w-4 text-muted-foreground" />
           <Input
             name="search"
@@ -112,6 +133,44 @@ export default async function CompaniesPage({ searchParams }: PageProps) {
             className="pl-8 h-8"
           />
         </div>
+
+        <select
+          name="companyType"
+          defaultValue={params.companyType ?? ""}
+          className="h-8 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+        >
+          <option value="">All Types</option>
+          {COMPANY_TYPE_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+
+        <select
+          name="tag"
+          defaultValue={params.tag ?? ""}
+          className="h-8 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+        >
+          <option value="">All Tags</option>
+          {COMPANY_TAGS.map((tag) => (
+            <option key={tag} value={tag}>{tag}</option>
+          ))}
+        </select>
+
+        <button
+          type="submit"
+          className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-8")}
+        >
+          Filter
+        </button>
+
+        {(activeFilters > 0 || params.search) && (
+          <Link
+            href="/companies"
+            className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-8 text-muted-foreground")}
+          >
+            Clear
+          </Link>
+        )}
       </form>
 
       {!isPro && requestedPage > 1 ? (

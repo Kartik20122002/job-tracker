@@ -16,6 +16,7 @@ import { DeleteApplicationButton } from "@/features/applications/components/Dele
 import { getApplicationById } from "@/server/queries/applications";
 import { getEmailActivitiesForApplication, getGmailConnectionStatus } from "@/server/queries/gmail";
 import { ApplicationEmailSection } from "@/features/gmail/components/ApplicationEmailSection";
+import { ReferralTemplateButton } from "@/features/applications/components/ReferralTemplateButton";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
@@ -74,8 +75,13 @@ export default async function ApplicationDetailPage({ params }: PageProps) {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <StatusBadge status={application.status} />
+          <ReferralTemplateButton
+            company={application.company}
+            position={application.position}
+            jobLink={application.jobLink}
+          />
           <Link
             href={`/applications/${id}/edit`}
             className={cn(buttonVariants({ variant: "outline", size: "sm" }))}

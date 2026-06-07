@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ExternalLink, Loader2, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
+import { ExternalLink, Loader2, MoreHorizontal, Pencil, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -16,6 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -48,7 +49,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CompanySchema, type CompanyInput, type CompanyFormValues } from "@/lib/validations/company";
+import { CompanySchema, COMPANY_TAGS, type CompanyInput, type CompanyFormValues } from "@/lib/validations/company";
 import { CompanyType } from "@/lib/enums";
 import { createCompany, updateCompany, deleteCompany } from "@/server/actions/companies";
 import type { Company } from "@/types/database";
@@ -80,6 +81,7 @@ function CompanyFormDialog({ open, onOpenChange, company }: CompanyFormDialogPro
       companyType: company?.companyType ?? CompanyType.OTHER,
       careerPageUrl: company?.careerPageUrl ?? "",
       linkedinUrl: company?.linkedinUrl ?? "",
+      tags: company?.tags ?? [],
     },
   });
 
@@ -181,6 +183,50 @@ function CompanyFormDialog({ open, onOpenChange, company }: CompanyFormDialogPro
               )}
             />
 
+            <FormField
+              control={form.control}
+              name="tags"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tags</FormLabel>
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {(field.value as string[]).map((tag) => (
+                      <Badge key={tag} variant="secondary" className="gap-1 pr-1">
+                        {tag}
+                        <button
+                          type="button"
+                          onClick={() => field.onChange((field.value as string[]).filter((t) => t !== tag))}
+                          className="ml-0.5 rounded-full hover:bg-muted"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                  <Select
+                    onValueChange={(val) => {
+                      if (val && !(field.value as string[]).includes(val)) {
+                        field.onChange([...(field.value as string[]), val]);
+                      }
+                    }}
+                    value=""
+                  >
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Add a tag..." />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {COMPANY_TAGS.filter((t) => !(field.value as string[]).includes(t)).map((tag) => (
+                        <SelectItem key={tag} value={tag}>{tag}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <DialogFooter>
               <Button type="submit" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -244,6 +290,7 @@ export function CompaniesTable({ companies, isProUser }: CompaniesTableProps) {
             <TableRow>
               <TableHead>Company Name</TableHead>
               <TableHead>Company Type</TableHead>
+              <TableHead>Tags</TableHead>
               <TableHead>Career Page</TableHead>
               <TableHead>LinkedIn</TableHead>
               {isProUser && <TableHead className="w-10"></TableHead>}
@@ -252,7 +299,7 @@ export function CompaniesTable({ companies, isProUser }: CompaniesTableProps) {
           <TableBody>
             {companies.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={isProUser ? 5 : 4} className="py-12 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={isProUser ? 6 : 5} className="py-12 text-center text-sm text-muted-foreground">
                   No companies found.
                 </TableCell>
               </TableRow>
@@ -262,6 +309,18 @@ export function CompaniesTable({ companies, isProUser }: CompaniesTableProps) {
                   <TableCell className="font-medium">{company.name}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {companyTypeLabel(company.companyType)}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {company.tags.length > 0
+                        ? company.tags.map((tag) => (
+                            <Badge key={tag} variant="outline" className="text-xs font-normal">
+                              {tag}
+                            </Badge>
+                          ))
+                        : <span className="text-sm text-muted-foreground">—</span>
+                      }
+                    </div>
                   </TableCell>
                   <TableCell>
                     <a
