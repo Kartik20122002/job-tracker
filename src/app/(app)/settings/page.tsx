@@ -3,10 +3,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { GmailConnectionCard } from "@/features/gmail/components/GmailConnectionCard";
 import { getGmailConnectionStatus } from "@/server/queries/gmail";
+import { isProUser } from "@/lib/pro-access";
 
 export default async function SettingsPage() {
   const session = await auth();
-  const gmail = await getGmailConnectionStatus(session!.user.id);
+  const isPro = await isProUser(session!.user.email ?? "");
+  const gmail = isPro ? await getGmailConnectionStatus(session!.user.id) : null;
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -28,9 +30,10 @@ export default async function SettingsPage() {
         </CardHeader>
         <CardContent>
           <GmailConnectionCard
-            isConnected={gmail.isConnected}
-            gmailAddress={gmail.gmailAddress}
-            connectedAt={gmail.connectedAt}
+            isConnected={gmail?.isConnected ?? false}
+            gmailAddress={gmail?.gmailAddress ?? null}
+            connectedAt={gmail?.connectedAt ?? null}
+            isProUser={isPro}
           />
         </CardContent>
       </Card>

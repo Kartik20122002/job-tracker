@@ -12,6 +12,7 @@ import {
 import { ApplicationStatus } from "@/lib/enums";
 import type { MatchedByValue } from "@/lib/gmail-matcher";
 import type { ParsedEmail } from "@/lib/gmail";
+import { isProUser } from "@/lib/pro-access";
 
 const INACTIVE_STATUSES = [ApplicationStatus.Rejected, ApplicationStatus.Withdrawn];
 
@@ -260,6 +261,10 @@ async function runIncrementalSync(
 export async function POST() {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  if (!(await isProUser(session.user.email ?? ""))) {
+    return NextResponse.json({ error: "Pro plan required" }, { status: 403 });
+  }
 
   const userId = session.user.id;
 

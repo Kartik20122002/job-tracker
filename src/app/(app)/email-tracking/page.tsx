@@ -1,15 +1,37 @@
 import Link from "next/link";
-import { Mail } from "lucide-react";
+import { Lock, Mail } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GmailSyncButton } from "@/features/gmail/components/GmailSyncButton";
 import { getGmailConnectionStatus, getRecentEmailActivities } from "@/server/queries/gmail";
 import { formatDate, decodeHtmlEntities, cn } from "@/lib/utils";
+import { isProUser } from "@/lib/pro-access";
 
 export default async function EmailTrackingPage() {
   const session = await auth();
   const userId = session!.user.id;
+  const isPro = await isProUser(session!.user.email ?? "");
+
+  if (!isPro) {
+    return (
+      <div className="space-y-6 w-full">
+        <div>
+          <h1 className="text-2xl font-bold">Email Tracking</h1>
+          <p className="text-sm text-muted-foreground">Recruiter emails matched to your applications</p>
+        </div>
+        <Card>
+          <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
+            <Lock className="h-10 w-10 text-muted-foreground/40" />
+            <p className="font-medium">Pro feature</p>
+            <p className="text-sm text-muted-foreground max-w-sm">
+              Gmail sync and email tracking are available on the Pro plan.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const [gmail, emails] = await Promise.all([
     getGmailConnectionStatus(userId),

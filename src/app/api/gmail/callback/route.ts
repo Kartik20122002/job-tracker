@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { exchangeCodeForTokens, getGmailProfile, GmailApiError } from "@/lib/gmail";
+import { isProUser } from "@/lib/pro-access";
 
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -14,6 +15,11 @@ export async function GET(request: NextRequest) {
   const error = searchParams.get("error");
 
   const settingsUrl = new URL("/settings", process.env.NEXTAUTH_URL!);
+
+  if (!(await isProUser(session.user.email ?? ""))) {
+    settingsUrl.searchParams.set("gmail_error", "pro_required");
+    return NextResponse.redirect(settingsUrl);
+  }
 
   if (error || !code) {
     settingsUrl.searchParams.set("gmail_error", error ?? "access_denied");

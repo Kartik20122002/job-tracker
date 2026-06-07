@@ -4,6 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { ChevronLeft, ExternalLink, MapPin, Pencil } from "lucide-react";
 import { auth } from "@/lib/auth";
+import { isProUser } from "@/lib/pro-access";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,20 +35,16 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 export default async function ApplicationDetailPage({ params }: PageProps) {
   const { id } = await params;
   const session = await auth();
+  const isPro = await isProUser(session!.user.email ?? "");
   const [application, emailActivities, gmail] = await Promise.all([
     getApplicationById(id, session!.user.id),
-    getEmailActivitiesForApplication(id),
-    getGmailConnectionStatus(session!.user.id),
+    isPro ? getEmailActivitiesForApplication(id) : Promise.resolve([]),
+    isPro ? getGmailConnectionStatus(session!.user.id) : Promise.resolve(null),
   ]);
 
   if (!application) notFound();
 
-  const allowedEmails = process.env.RESUME_UPLOAD_ALLOWED_EMAILS ?? "";
-  const isUploadAllowed = allowedEmails
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean)
-    .includes((session!.user.email ?? "").toLowerCase());
+  const isUploadAllowed = isPro;
 
   const hasNotes = !!application.notes;
   const hasFeedback = !!application.interviewFeedback;
@@ -256,19 +253,21 @@ export default async function ApplicationDetailPage({ params }: PageProps) {
         </CardContent>
       </Card>
 
-      {/* Row 4: Recruiter Emails */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Recruiter Emails</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ApplicationEmailSection
-            applicationId={id}
-            activities={emailActivities}
-            gmailConnected={gmail.isConnected}
-          />
-        </CardContent>
-      </Card>
+      {/* Row 4: Recruiter Emails — Pro only */}
+      {isPro && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Recruiter Emails</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ApplicationEmailSection
+              applicationId={id}
+              activities={emailActivities}
+              gmailConnected={gmail?.isConnected ?? false}
+            />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

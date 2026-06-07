@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
+import { isProUser } from "@/lib/pro-access";
 
 const BUCKET = "resumes";
 const MAX_SIZE_BYTES = 1 * 1024 * 1024; // 1 MB
@@ -13,12 +14,7 @@ export async function POST(request: Request) {
   const formData = await request.formData();
   const file = formData.get("file") as File | null;
 
-  const allowedEmails = process.env.RESUME_UPLOAD_ALLOWED_EMAILS ?? "";
-  const allowed = allowedEmails
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-  if (!allowed.includes((session.user.email ?? "").toLowerCase())) {
+  if (!(await isProUser(session.user.email ?? ""))) {
     return Response.json({ error: "Resume upload is not enabled for your account" }, { status: 403 });
   }
 

@@ -3,10 +3,15 @@ import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { refreshAccessToken, searchGmailMessages, getGmailMessage, GmailApiError } from "@/lib/gmail";
 import { matchEmailToApp, buildMaps } from "@/app/api/gmail/sync/route";
+import { isProUser } from "@/lib/pro-access";
 
 export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  if (!(await isProUser(session.user.email ?? ""))) {
+    return NextResponse.json({ error: "Pro plan required" }, { status: 403 });
+  }
 
   const { applicationId } = await request.json();
   if (!applicationId) return NextResponse.json({ error: "applicationId required" }, { status: 400 });

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CheckCircle, Mail, WifiOff } from "lucide-react";
+import { CheckCircle, Lock, Mail, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,12 +12,14 @@ interface GmailConnectionCardProps {
   isConnected: boolean;
   gmailAddress: string | null;
   connectedAt: Date | null;
+  isProUser: boolean;
 }
 
 export function GmailConnectionCard({
   isConnected,
   gmailAddress,
   connectedAt,
+  isProUser,
 }: GmailConnectionCardProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -33,6 +35,7 @@ export function GmailConnectionCard({
         access_denied: "Gmail connection was cancelled.",
         no_refresh_token: "No refresh token received. Please try connecting again.",
         connection_failed: "Gmail connection failed. Please try again.",
+        pro_required: "Gmail integration is a Pro feature.",
       };
       toast.error(messages[gmailError] ?? `Connection error: ${gmailError}`);
       router.replace("/settings");
@@ -55,6 +58,35 @@ export function GmailConnectionCard({
     } finally {
       setDisconnecting(false);
     }
+  }
+
+  if (!isProUser) {
+    return (
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted">
+            <Mail className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">Gmail</span>
+              <Badge variant="secondary" className="text-xs gap-1">
+                <Lock className="h-3 w-3" />
+                Pro only
+              </Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Gmail sync is available on the Pro plan.
+            </p>
+          </div>
+        </div>
+        <div className="shrink-0">
+          <Button variant="outline" size="sm" disabled>
+            Connect Gmail
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (
