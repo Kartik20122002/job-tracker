@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Briefcase, LayoutDashboard, LogOut, Mail, Menu, Settings } from "lucide-react";
+import { BarChart3, Briefcase, Building2, LayoutDashboard, LogOut, Mail, Menu, Settings } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/applications", label: "Applications", icon: Briefcase },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/companies", label: "Companies", icon: Building2 },
   { href: "/email-tracking", label: "Email Tracking", icon: Mail },
   { href: "/settings", label: "Settings", icon: Settings },
 ];

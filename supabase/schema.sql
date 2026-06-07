@@ -1,5 +1,11 @@
 -- ─── Enums ───────────────────────────────────────────────────────────────────
 
+CREATE TYPE "CompanyType" AS ENUM (
+  'PRODUCT_BASED',
+  'SERVICE_BASED',
+  'OTHER'
+);
+
 CREATE TYPE "ApplicationStatus" AS ENUM (
   'Started',
   'Referral_Asked',
@@ -206,3 +212,23 @@ CREATE TABLE "EmailActivity" (
 
 CREATE UNIQUE INDEX "EmailActivity_gmailMessageId_key" ON "EmailActivity" ("gmailMessageId");
 CREATE INDEX        "EmailActivity_applicationId_idx"  ON "EmailActivity" ("applicationId");
+
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE "Company" (
+  "id"             TEXT          NOT NULL DEFAULT gen_random_uuid()::text,
+  "name"           TEXT          NOT NULL,
+  "companyType"    "CompanyType" NOT NULL DEFAULT 'OTHER',
+  "careerPageUrl"  TEXT          NOT NULL,
+  "linkedinUrl"    TEXT,
+  "createdAt"      TIMESTAMPTZ   NOT NULL DEFAULT now(),
+  "updatedAt"      TIMESTAMPTZ   NOT NULL DEFAULT now(),
+
+  CONSTRAINT "Company_pkey" PRIMARY KEY ("id")
+);
+
+CREATE UNIQUE INDEX "Company_name_key" ON "Company" ("name");
+
+CREATE TRIGGER "Company_updatedAt"
+  BEFORE UPDATE ON "Company"
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();

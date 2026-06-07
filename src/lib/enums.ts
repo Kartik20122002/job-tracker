@@ -58,3 +58,10 @@ export const SyncStatus = {
   FAILED: "FAILED",
 } as const;
 export type SyncStatus = (typeof SyncStatus)[keyof typeof SyncStatus];
+
+export const CompanyType = {
+  PRODUCT_BASED: "PRODUCT_BASED",
+  SERVICE_BASED: "SERVICE_BASED",
+  OTHER: "OTHER",
+} as const;
+export type CompanyType = (typeof CompanyType)[keyof typeof CompanyType];

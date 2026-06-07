@@ -2,6 +2,7 @@ import type {
   ApplicationStatus,
   ApplicationSource,
   ApplicationType,
+  CompanyType,
   Currency,
   MatchedBy,
   SyncStatus,
@@ -97,4 +98,14 @@ export type User = {
   email: string;
   passwordHash: string;
   createdAt: string;
+};
+
+export type Company = {
+  id: string;
+  name: string;
+  companyType: CompanyType;
+  careerPageUrl: string;
+  linkedinUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
