@@ -18,7 +18,6 @@ import { getEmailActivitiesForApplication, getGmailConnectionStatus } from "@/se
 import { ApplicationEmailSection } from "@/features/gmail/components/ApplicationEmailSection";
 import { ReferralTemplateButton } from "@/features/applications/components/ReferralTemplateButton";
 import { LinkedInSearchButton } from "@/features/applications/components/LinkedInSearchButton";
-import { KeywordTailor } from "@/features/applications/components/KeywordTailor";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
@@ -278,11 +277,6 @@ export default async function ApplicationDetailPage({ params }: PageProps) {
         </Card>
       )}
 
-      {/* Row 5: Keyword Match Tool */}
-      <KeywordTailor
-        position={application.position}
-        notes={application.notes}
-      />
     </div>
   );
 }
