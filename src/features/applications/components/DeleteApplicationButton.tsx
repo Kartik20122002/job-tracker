@@ -54,12 +54,12 @@ export function DeleteApplicationButton({
     <>
       <Button
         variant="outline"
-        size="sm"
+        size="icon"
         className="text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground"
         onClick={() => setOpen(true)}
       >
-        <Trash2 className="mr-2 h-4 w-4" />
-        Delete
+        <Trash2 className="h-4 w-4" />
+        <span className="sr-only">Delete</span>
       </Button>
       <AlertDialog open={open} onOpenChange={(val) => setOpen(val)}>
         <AlertDialogContent>

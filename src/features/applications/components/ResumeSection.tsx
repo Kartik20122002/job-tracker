@@ -112,7 +112,7 @@ export function ResumeSection({
       )}
 
       {isUploadAllowed ? (
-        <>
+        <div className="flex items-center justify-between">
           <Button
             variant="outline"
             size="sm"
@@ -127,7 +127,7 @@ export function ResumeSection({
             {resumeFilePath ? "Replace Resume" : "Upload Resume"}
           </Button>
           <p className="text-xs text-muted-foreground">PDF only, max 1 MB</p>
-        </>
+        </div>
       ) : (
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" disabled>

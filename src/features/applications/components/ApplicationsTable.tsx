@@ -88,7 +88,7 @@ export function ApplicationsTable({ applications }: ApplicationsTableProps) {
             <TableRow>
               <TableHead>Company</TableHead>
               <TableHead>Position</TableHead>
-              <TableHead className="hidden md:table-cell">Country</TableHead>
+              <TableHead className="hidden md:table-cell">Job Link</TableHead>
               <TableHead className="hidden lg:table-cell">Location</TableHead>
               <TableHead className="hidden sm:table-cell">Applied</TableHead>
               <TableHead>Status</TableHead>
@@ -104,7 +104,21 @@ export function ApplicationsTable({ applications }: ApplicationsTableProps) {
               >
                 <TableCell className="font-medium">{app.company}</TableCell>
                 <TableCell className="text-muted-foreground">{app.position}</TableCell>
-                <TableCell className="hidden md:table-cell text-muted-foreground">{app.country}</TableCell>
+                <TableCell className="hidden md:table-cell" onClick={(e) => e.stopPropagation()}>
+                  {app.jobLink ? (
+                    <a
+                      href={app.jobLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-primary hover:underline text-sm"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      View
+                    </a>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </TableCell>
                 <TableCell className="hidden lg:table-cell text-muted-foreground">{app.location ?? "—"}</TableCell>
                 <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
                   {formatDate(app.appliedDate)}
