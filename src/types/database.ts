@@ -96,7 +96,7 @@ export type User = {
   id: string;
   username: string;
   email: string;
-  passwordHash: string;
+  subscription: "pro" | "free";
   createdAt: string;
 };
 
@@ -105,7 +105,6 @@ export type Company = {
   name: string;
   companyType: CompanyType;
   careerPageUrl: string;
-  linkedinUrl: string | null;
   tags: string[];
   createdAt: string;
   updatedAt: string;

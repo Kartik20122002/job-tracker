@@ -67,7 +67,8 @@ CREATE TABLE "User" (
   "id"           TEXT        NOT NULL DEFAULT gen_random_uuid()::text,
   "username"     TEXT        NOT NULL,
   "email"        TEXT        NOT NULL,
-  "passwordHash" TEXT        NOT NULL,
+  "googleId"     TEXT,
+  "subscription" TEXT        NOT NULL DEFAULT 'free',
   "createdAt"    TIMESTAMPTZ NOT NULL DEFAULT now(),
 
   CONSTRAINT "User_pkey" PRIMARY KEY ("id")
@@ -216,13 +217,13 @@ CREATE INDEX        "EmailActivity_applicationId_idx"  ON "EmailActivity" ("appl
 -- ─────────────────────────────────────────────────────────────────────────────
 
 CREATE TABLE "Company" (
-  "id"             TEXT          NOT NULL DEFAULT gen_random_uuid()::text,
-  "name"           TEXT          NOT NULL,
-  "companyType"    "CompanyType" NOT NULL DEFAULT 'OTHER',
-  "careerPageUrl"  TEXT          NOT NULL,
-  "linkedinUrl"    TEXT,
-  "createdAt"      TIMESTAMPTZ   NOT NULL DEFAULT now(),
-  "updatedAt"      TIMESTAMPTZ   NOT NULL DEFAULT now(),
+  "id"            TEXT          NOT NULL DEFAULT gen_random_uuid()::text,
+  "name"          TEXT          NOT NULL,
+  "companyType"   "CompanyType" NOT NULL DEFAULT 'OTHER',
+  "careerPageUrl" TEXT          NOT NULL,
+  "tags"          TEXT[]        NOT NULL DEFAULT '{}',
+  "createdAt"     TIMESTAMPTZ   NOT NULL DEFAULT now(),
+  "updatedAt"     TIMESTAMPTZ   NOT NULL DEFAULT now(),
 
   CONSTRAINT "Company_pkey" PRIMARY KEY ("id")
 );

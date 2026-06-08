@@ -1,9 +1,6 @@
 import NextAuth from "next-auth";
-import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
-import bcrypt from "bcryptjs";
 import { supabaseAdmin } from "@/lib/supabase";
-import { LoginSchema } from "@/lib/validations/auth";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
@@ -11,32 +8,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     }),
-    Credentials({
-      async authorize(credentials) {
-        const parsed = LoginSchema.safeParse(credentials);
-        if (!parsed.success) return null;
-
-        const { identifier, password } = parsed.data;
-
-        const { data: user } = await supabaseAdmin
-          .from("User")
-          .select("id, username, email, passwordHash")
-          .or(`email.eq.${identifier},username.eq.${identifier}`)
-          .single();
-
-        if (!user || !user.passwordHash) return null;
-
-        const valid = await bcrypt.compare(password, user.passwordHash);
-        if (!valid) return null;
-
-        return { id: user.id, name: user.username, email: user.email };
-      },
-    }),
   ],
   session: { strategy: "jwt" },
   callbacks: {
     async signIn({ user, account }) {
-      if (account?.provider !== "google") return true;
+      if (account?.provider !== "google") return false;
 
       const { data: existing } = await supabaseAdmin
         .from("User")
@@ -71,20 +47,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
 
     async jwt({ token, account }) {
-      // On initial sign-in (account is only defined then), fetch DB id by email
+      // On initial sign-in fetch DB id + subscription and store in token
       if (account) {
         const { data } = await supabaseAdmin
           .from("User")
-          .select("id")
+          .select("id, subscription")
           .eq("email", token.email!)
           .single();
-        if (data) token.id = data.id;
+        if (data) {
+          token.id = data.id;
+          token.subscription = data.subscription;
+        }
       }
       return token;
     },
 
     session({ session, token }) {
       session.user.id = token.id as string;
+      session.user.subscription = (token.subscription ?? "free") as "pro" | "free";
       return session;
     },
   },

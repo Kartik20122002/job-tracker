@@ -25,11 +25,9 @@ export async function createCompany(data: CompanyInput): Promise<ActionResult<{ 
     return { success: false, error: parsed.error.issues[0].message };
   }
 
-  const { linkedinUrl, ...rest } = parsed.data;
-
   const { data: company, error } = await supabaseAdmin
     .from("Company")
-    .insert({ ...rest, linkedinUrl: linkedinUrl || null, tags: rest.tags ?? [] })
+    .insert({ ...parsed.data, tags: parsed.data.tags ?? [] })
     .select("id")
     .single();
 
@@ -52,11 +50,9 @@ export async function updateCompany(id: string, data: CompanyInput): Promise<Act
     return { success: false, error: parsed.error.issues[0].message };
   }
 
-  const { linkedinUrl, ...rest } = parsed.data;
-
   const { error } = await supabaseAdmin
     .from("Company")
-    .update({ ...rest, linkedinUrl: linkedinUrl || null, tags: rest.tags ?? [] })
+    .update({ ...parsed.data, tags: parsed.data.tags ?? [] })
     .eq("id", id);
 
   if (error) {

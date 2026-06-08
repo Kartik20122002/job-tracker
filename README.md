@@ -25,9 +25,9 @@ A full-stack job application tracking system built with Next.js, Supabase, and G
 ### Company Directory
 
 - Global shared directory of companies, visible to all authenticated users
-- Columns: Company Name, Company Type (Product Based / Service Based / Other), Career Page, LinkedIn
+- Columns: Company Name, Company Type (Product Based / Service Based / Other), Tags, Career Page, Find Connections
 - Search by company name
-- Career page and LinkedIn links open in a new tab
+- Career page opens in a new tab; Find Connections links to a LinkedIn people search for that company (no network filter — useful for exploring and building connections before applying)
 - FREE users can browse the first page of results; page 2+ requires Pro with an upgrade prompt
 - Pro users can add, edit, and delete companies via inline dialogs with confirmation on delete
 - Company names are unique across the directory
@@ -58,13 +58,13 @@ A full-stack job application tracking system built with Next.js, Supabase, and G
 
 ### Auth
 
-- Credential-based signup and login (email or username + password)
-- Passwords hashed with bcrypt
+- Google OAuth only — sign in with your Google account, no passwords
 - JWT session strategy via NextAuth v5
+- Subscription tier (`free` / `pro`) stored in the database, read once at sign-in and cached in the JWT token for the session lifetime
 
 ### Subscription Tiers
 
-Access is controlled via the `PRO_USERS` environment variable (a comma-separated list of email addresses).
+Access is controlled via the `subscription` column on the `User` table (`free` or `pro`). To upgrade a user, update their row directly in Supabase and have them sign out and back in.
 
 | Feature | FREE | PRO |
 |---|---|---|
@@ -85,7 +85,7 @@ Access is controlled via the `PRO_USERS` environment variable (a comma-separated
 | Framework | Next.js (App Router) |
 | Language | TypeScript |
 | Database | Supabase (PostgreSQL 17) |
-| Auth | NextAuth v5 (JWT, Credentials) |
+| Auth | NextAuth v5 (JWT, Google OAuth) |
 | UI Components | Base UI + shadcn/ui + Tailwind CSS v4 |
 | Forms | React Hook Form + Zod |
 | Charts | Recharts |
@@ -112,19 +112,26 @@ cp .env.example .env.local
 # 3. Apply the database schema to your Supabase project
 #    Run supabase/schema.sql in the Supabase SQL editor
 
-# 4. Install dependencies and start the dev server
+# 4. (Optional) Grant Pro access to a user
+#    UPDATE "User" SET "subscription" = 'pro' WHERE "email" = 'you@gmail.com';
+
+# 5. Install dependencies and start the dev server
 npm install
 npm run dev
 ```
 
 The app will be available at `http://localhost:3000`.
 
-### Gmail Integration Setup
+### Google OAuth & Gmail Setup
+
+The same Google OAuth credentials are used for both sign-in and Gmail integration.
 
 1. Create a project in [Google Cloud Console](https://console.cloud.google.com)
 2. Enable the Gmail API
 3. Create OAuth 2.0 credentials (Web application)
-4. Add `http://localhost:3000/api/gmail/callback` as an authorised redirect URI
+4. Add all of the following as authorised redirect URIs:
+   - `http://localhost:3000/api/auth/callback/google` (sign-in)
+   - `http://localhost:3000/api/gmail/callback` (Gmail)
 5. Copy the Client ID and Secret into `.env.local`
 
 ## Environment Variables
@@ -135,10 +142,9 @@ The app will be available at `http://localhost:3000`.
 | `NEXTAUTH_URL` | Full URL of the app (e.g. `http://localhost:3000`) |
 | `SUPABASE_URL` | Your Supabase project URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server-side only) |
-| `GOOGLE_CLIENT_ID` | Google OAuth client ID |
+| `GOOGLE_CLIENT_ID` | Google OAuth client ID (used for both sign-in and Gmail) |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
-| `GOOGLE_REDIRECT_URI` | OAuth callback URL (`/api/gmail/callback`) |
-| `PRO_USERS` | Comma-separated list of Pro user email addresses |
+| `GOOGLE_REDIRECT_URI` | Gmail OAuth callback URL (`/api/gmail/callback`) |
 
 ## Project Structure
 
@@ -159,6 +165,7 @@ src/
 │       └── export/             # CSV export
 ├── features/
 │   ├── applications/           # Form, filters, table, timeline, resume section
+│   ├── auth/                   # Login page (Google sign-in button)
 │   ├── companies/              # Companies table with add/edit/delete dialogs
 │   ├── analytics/              # Charts
 │   └── gmail/                  # Gmail connection card, email section

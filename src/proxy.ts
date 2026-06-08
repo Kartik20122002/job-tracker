@@ -5,10 +5,6 @@ export const proxy = auth((req) => {
   const isAuth = !!req.auth;
   const pathname = req.nextUrl.pathname;
 
-  if (pathname.startsWith("/signup")) {
-    return NextResponse.redirect(new URL("/login", req.url));
-  }
-
   const isAuthPage = pathname.startsWith("/login");
 
   if (!isAuth && !isAuthPage) {

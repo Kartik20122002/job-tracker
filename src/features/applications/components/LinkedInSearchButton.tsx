@@ -4,13 +4,14 @@ import { Button } from "@/components/ui/button";
 
 interface LinkedInSearchButtonProps {
   company: string;
+  network?: "F" | "none";
 }
 
-export function LinkedInSearchButton({ company }: LinkedInSearchButtonProps) {
+export function LinkedInSearchButton({ company, network = "F" }: LinkedInSearchButtonProps) {
   function handleClick() {
     const encoded = encodeURIComponent(company);
-    // Search people at company, filtered to 1st & 2nd connections
-    const url = `https://www.linkedin.com/search/results/people/?keywords=${encoded}&network=%5B%22F%22%2C%22S%22%5D`;
+    const networkParam = network !== "none" ? `&network=%5B%22${network}%22%5D` : "";
+    const url = `https://www.linkedin.com/search/results/people/?keywords=${encoded}${networkParam}`;
     window.open(url, "_blank", "noopener,noreferrer");
   }
 
