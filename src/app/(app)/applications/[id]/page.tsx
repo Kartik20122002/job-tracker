@@ -17,6 +17,8 @@ import { getApplicationById } from "@/server/queries/applications";
 import { getEmailActivitiesForApplication, getGmailConnectionStatus } from "@/server/queries/gmail";
 import { ApplicationEmailSection } from "@/features/gmail/components/ApplicationEmailSection";
 import { ReferralTemplateButton } from "@/features/applications/components/ReferralTemplateButton";
+import { LinkedInSearchButton } from "@/features/applications/components/LinkedInSearchButton";
+import { KeywordTailor } from "@/features/applications/components/KeywordTailor";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
@@ -77,6 +79,7 @@ export default async function ApplicationDetailPage({ params }: PageProps) {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <StatusBadge status={application.status} />
+          <LinkedInSearchButton company={application.company} />
           <ReferralTemplateButton
             company={application.company}
             position={application.position}
@@ -274,6 +277,12 @@ export default async function ApplicationDetailPage({ params }: PageProps) {
           </CardContent>
         </Card>
       )}
+
+      {/* Row 5: Keyword Match Tool */}
+      <KeywordTailor
+        position={application.position}
+        notes={application.notes}
+      />
     </div>
   );
 }
