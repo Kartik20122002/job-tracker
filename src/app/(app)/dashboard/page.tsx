@@ -151,7 +151,7 @@ export default async function DashboardPage() {
         </Card>
 
         {/* Recruiter Updates */}
-        <Card>
+        <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="text-base">Recruiter Updates</CardTitle>
           </CardHeader>
@@ -166,7 +166,7 @@ export default async function DashboardPage() {
         </Card>
 
         {/* Upcoming Interviews */}
-        <Card className="lg:col-span-2">
+        <Card>
           <CardHeader>
             <CardTitle className="text-base">Upcoming Interviews</CardTitle>
           </CardHeader>

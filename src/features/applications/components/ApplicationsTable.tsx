@@ -97,7 +97,7 @@ export function ApplicationsTable({ applications }: ApplicationsTableProps) {
               {/* <TableHead className="hidden lg:table-cell">Location</TableHead> */}
               <TableHead className="hidden sm:table-cell">Applied</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="w-10"></TableHead>
+              {/* <TableHead className="w-10"></TableHead> */}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -151,7 +151,7 @@ export function ApplicationsTable({ applications }: ApplicationsTableProps) {
                     )}
                   </div>
                 </TableCell>
-                <TableCell onClick={(e) => e.stopPropagation()}>
+                {/* <TableCell onClick={(e) => e.stopPropagation()}>
                   <DropdownMenu>
                     <DropdownMenuTrigger
                       render={<Button variant="ghost" size="icon" className="h-8 w-8" />}
@@ -182,7 +182,7 @@ export function ApplicationsTable({ applications }: ApplicationsTableProps) {
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                </TableCell>
+                </TableCell> */}
               </TableRow>
               );
             })}

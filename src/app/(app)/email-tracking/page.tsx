@@ -1,11 +1,11 @@
-import Link from "next/link";
 import { Lock, Mail } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GmailSyncButton } from "@/features/gmail/components/GmailSyncButton";
+import { EmailTrackingList } from "@/features/gmail/components/EmailTrackingList";
 import { getGmailConnectionStatus, getRecentEmailActivities } from "@/server/queries/gmail";
-import { formatDate, decodeHtmlEntities, cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { isProUser } from "@/lib/pro-access";
 
 export default async function EmailTrackingPage() {
@@ -87,29 +87,7 @@ export default async function EmailTrackingPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="divide-y">
-              {emails.map((email) => (
-                <Link
-                  key={email.id}
-                  href={`/email-tracking/${email.id}`}
-                  className="flex items-start gap-4 px-6 py-3 hover:bg-muted/40 transition-colors"
-                >
-                  <span className="shrink-0 w-24 pt-0.5 text-xs text-muted-foreground">
-                    {formatDate(email.receivedAt)}
-                  </span>
-                  <span className="shrink-0 w-44 truncate pt-0.5 text-sm text-muted-foreground">
-                    {email.senderEmail}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{email.subject}</p>
-                    <p className="text-xs text-muted-foreground truncate">{decodeHtmlEntities(email.snippet)}</p>
-                  </div>
-                  <span className="shrink-0 text-xs text-primary truncate max-w-30">
-                    {email.application.company}
-                  </span>
-                </Link>
-              ))}
-            </div>
+            <EmailTrackingList emails={emails} />
           </CardContent>
         </Card>
       )}

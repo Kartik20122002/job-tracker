@@ -10,6 +10,7 @@ import { getEmailActivityById } from "@/server/queries/gmail";
 import { getGmailMessageFull, refreshAccessToken } from "@/lib/gmail";
 import { supabaseAdmin } from "@/lib/supabase";
 import { EmailBodyFrame } from "@/features/gmail/components/EmailBodyFrame";
+import { DeleteEmailButton } from "@/features/gmail/components/DeleteEmailButton";
 import { formatDate, decodeHtmlEntities, cn } from "@/lib/utils";
 
 const MATCHED_BY_LABEL: Record<string, string> = {
@@ -72,15 +73,18 @@ export default async function EmailDetailPage({ params }: PageProps) {
           <ChevronLeft className="mr-1 h-4 w-4" />
           Email Tracking
         </Link>
-        <a
-          href={gmailWebUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-        >
-          <ExternalLink className="mr-2 h-4 w-4" />
-          Open in Gmail
-        </a>
+        <div className="flex items-center gap-2">
+          <DeleteEmailButton id={activity.id} redirectTo="/email-tracking" />
+          <a
+            href={gmailWebUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+          >
+            <ExternalLink className="mr-2 h-4 w-4" />
+            Open in Gmail
+          </a>
+        </div>
       </div>
 
       {/* Email metadata */}

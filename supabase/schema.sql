@@ -205,6 +205,7 @@ CREATE TABLE "EmailActivity" (
   "receivedAt"     TIMESTAMPTZ NOT NULL,
   "matchedBy"      "MatchedBy" NOT NULL,
   "createdAt"      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  "deletedAt"      TIMESTAMPTZ,
 
   CONSTRAINT "EmailActivity_pkey" PRIMARY KEY ("id"),
   CONSTRAINT "EmailActivity_applicationId_fkey" FOREIGN KEY ("applicationId")

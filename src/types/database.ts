@@ -65,6 +65,7 @@ export type EmailActivity = {
   receivedAt: string;
   matchedBy: MatchedBy;
   createdAt: string;
+  deletedAt: string | null;
 };
 
 export type EmailActivityWithApplication = EmailActivity & {

@@ -51,6 +51,7 @@ export async function getRecentEmailActivities(
     .from("EmailActivity")
     .select("*, Application!inner(id, company)")
     .in("applicationId", appIds)
+    .is("deletedAt", null)
     .order("receivedAt", { ascending: false })
     .limit(limit);
 
@@ -72,7 +73,8 @@ export async function getTotalMatchedEmails(userId: string): Promise<number> {
   const { count } = await supabaseAdmin
     .from("EmailActivity")
     .select("*", { count: "exact", head: true })
-    .in("applicationId", appIds);
+    .in("applicationId", appIds)
+    .is("deletedAt", null);
 
   return count ?? 0;
 }
@@ -82,6 +84,7 @@ export async function getEmailActivitiesForApplication(applicationId: string) {
     .from("EmailActivity")
     .select("*")
     .eq("applicationId", applicationId)
+    .is("deletedAt", null)
     .order("receivedAt", { ascending: false });
 
   return data ?? [];
@@ -92,6 +95,7 @@ export async function getEmailActivityById(id: string, userId: string) {
     .from("EmailActivity")
     .select("*, Application!inner(id, company, position, userId)")
     .eq("id", id)
+    .is("deletedAt", null)
     .single();
 
   if (!data) return null;
