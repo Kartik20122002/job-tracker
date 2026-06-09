@@ -35,6 +35,7 @@ import {
 } from "@/lib/enums";
 import { createApplication, updateApplication } from "@/server/actions/applications";
 import { ResumeSection } from "@/features/applications/components/ResumeSection";
+import type { UserResume } from "@/types/database";
 
 const STATUS_OPTIONS = Object.values(ApplicationStatus).map((v) => ({
   value: v,
@@ -65,6 +66,9 @@ interface ApplicationFormProps {
   resumeFileName?: string | null;
   resumeFilePath?: string | null;
   resumeUploadDate?: Date | null;
+  savedResumes?: UserResume[];
+  selectedResumeId?: string | null;
+  resumeLimit?: number;
 }
 
 function DatePickerField({
@@ -109,6 +113,9 @@ export function ApplicationForm({
   resumeFileName,
   resumeFilePath,
   resumeUploadDate,
+  savedResumes = [],
+  selectedResumeId,
+  resumeLimit = 5,
 }: ApplicationFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -540,6 +547,9 @@ export function ApplicationForm({
                       resumeFileName={resumeFileName}
                       resumeFilePath={resumeFilePath}
                       resumeUploadDate={resumeUploadDate}
+                      savedResumes={savedResumes}
+                      selectedResumeId={selectedResumeId}
+                      resumeLimit={resumeLimit}
                     />
                   </CardContent>
                 </>

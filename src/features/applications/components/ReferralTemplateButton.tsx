@@ -8,19 +8,33 @@ interface ReferralTemplateButtonProps {
   company: string;
   position: string;
   jobLink?: string | null;
+  resumeName?: string | null;
+  resumeLink?: string | null;
 }
 
-export function ReferralTemplateButton({ company, position, jobLink }: ReferralTemplateButtonProps) {
+export function ReferralTemplateButton({
+  company,
+  position,
+  jobLink,
+  resumeName,
+  resumeLink,
+}: ReferralTemplateButtonProps) {
   const [copied, setCopied] = useState(false);
 
   function buildTemplate() {
-    return `Hi [Name],
+    let template = `Hi [Name],
 
 I came across an opening at ${company} for ${position} that aligns well with my experience. I've attached my resume for your review.
 
 If you feel my profile is a good fit for the role, I would greatly appreciate a referral. Thank you for your time and consideration.
 
 Position Link: ${jobLink ?? "[position link]"}`;
+
+    if (resumeLink) {
+      template += `\nResume Link: ${resumeLink}`;
+    }
+
+    return template;
   }
 
   async function handleCopy() {

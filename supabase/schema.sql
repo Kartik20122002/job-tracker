@@ -108,12 +108,15 @@ CREATE TABLE "Application" (
   "resumeFileName"    TEXT,
   "resumeFilePath"    TEXT,
   "resumeUploadDate"  TIMESTAMPTZ,
+  "resumeId"          TEXT,
   "createdAt"         TIMESTAMPTZ        NOT NULL DEFAULT now(),
   "updatedAt"         TIMESTAMPTZ        NOT NULL DEFAULT now(),
 
   CONSTRAINT "Application_pkey" PRIMARY KEY ("id"),
   CONSTRAINT "Application_userId_fkey" FOREIGN KEY ("userId")
-    REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+    REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT "Application_resumeId_fkey" FOREIGN KEY ("resumeId")
+    REFERENCES "UserResume" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 CREATE INDEX "Application_userId_idx"            ON "Application" ("userId");
@@ -214,6 +217,27 @@ CREATE TABLE "EmailActivity" (
 
 CREATE UNIQUE INDEX "EmailActivity_gmailMessageId_key" ON "EmailActivity" ("gmailMessageId");
 CREATE INDEX        "EmailActivity_applicationId_idx"  ON "EmailActivity" ("applicationId");
+
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE "UserResume" (
+  "id"        TEXT        NOT NULL DEFAULT gen_random_uuid()::text,
+  "userId"    TEXT        NOT NULL,
+  "name"      TEXT        NOT NULL,
+  "link"      TEXT        NOT NULL,
+  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+  "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+  CONSTRAINT "UserResume_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "UserResume_userId_fkey" FOREIGN KEY ("userId")
+    REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE INDEX "UserResume_userId_idx" ON "UserResume" ("userId");
+
+CREATE TRIGGER "UserResume_updatedAt"
+  BEFORE UPDATE ON "UserResume"
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- ─────────────────────────────────────────────────────────────────────────────
 

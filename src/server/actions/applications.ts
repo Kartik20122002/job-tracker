@@ -178,6 +178,31 @@ export async function duplicateApplication(id: string): Promise<ActionResult<{ i
   return { success: true, data: { id: app.id } };
 }
 
+export async function updateApplicationResumeLink(
+  id: string,
+  resumeId: string | null
+): Promise<ActionResult> {
+  const userId = await requireAuth();
+
+  const { data: existing } = await supabaseAdmin
+    .from("Application")
+    .select("id")
+    .eq("id", id)
+    .eq("userId", userId)
+    .single();
+  if (!existing) return { success: false, error: "Application not found" };
+
+  const { error } = await supabaseAdmin
+    .from("Application")
+    .update({ resumeId })
+    .eq("id", id);
+
+  if (error) return { success: false, error: "Failed to update resume" };
+
+  revalidatePath(`/applications/${id}`);
+  return { success: true };
+}
+
 export async function updateApplicationResume(
   id: string,
   resumeFileName: string,

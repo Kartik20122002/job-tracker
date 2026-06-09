@@ -2,9 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { auth } from "@/lib/auth";
+import { isProUser } from "@/lib/pro-access";
 import { buttonVariants } from "@/components/ui/button";
 import { ApplicationForm } from "@/features/applications/components/ApplicationForm";
 import { getApplicationById } from "@/server/queries/applications";
+import { getUserResumes, RESUME_LIMITS } from "@/server/queries/resumes";
 import { cn } from "@/lib/utils";
 
 interface PageProps {
@@ -14,7 +16,12 @@ interface PageProps {
 export default async function EditApplicationPage({ params }: PageProps) {
   const { id } = await params;
   const session = await auth();
-  const application = await getApplicationById(id, session!.user.id);
+  const isPro = await isProUser(session!.user.email ?? "");
+  const [application, savedResumes] = await Promise.all([
+    getApplicationById(id, session!.user.id),
+    getUserResumes(session!.user.id),
+  ]);
+  const resumeLimit = isPro ? RESUME_LIMITS.pro : RESUME_LIMITS.free;
 
   if (!application) notFound();
 
@@ -65,6 +72,9 @@ export default async function EditApplicationPage({ params }: PageProps) {
         resumeFileName={application.resumeFileName}
         resumeFilePath={application.resumeFilePath}
         resumeUploadDate={application.resumeUploadDate ? new Date(application.resumeUploadDate) : null}
+        savedResumes={savedResumes}
+        selectedResumeId={application.resumeId}
+        resumeLimit={resumeLimit}
       />
     </div>
   );

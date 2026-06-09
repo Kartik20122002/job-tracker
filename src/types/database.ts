@@ -8,6 +8,15 @@ import type {
   SyncStatus,
 } from "@/lib/enums";
 
+export type UserResume = {
+  id: string;
+  userId: string;
+  name: string;
+  link: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type Application = {
   id: string;
   userId: string;
@@ -37,6 +46,7 @@ export type Application = {
   resumeFileName: string | null;
   resumeFilePath: string | null;
   resumeUploadDate: string | null;
+  resumeId: string | null;
   createdAt: string;
   updatedAt: string;
 };

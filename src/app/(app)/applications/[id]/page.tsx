@@ -15,6 +15,7 @@ import { ResumeSection } from "@/features/applications/components/ResumeSection"
 import { DeleteApplicationButton } from "@/features/applications/components/DeleteApplicationButton";
 import { getApplicationById } from "@/server/queries/applications";
 import { getEmailActivitiesForApplication, getGmailConnectionStatus } from "@/server/queries/gmail";
+import { getUserResumes, RESUME_LIMITS } from "@/server/queries/resumes";
 import { ApplicationEmailSection } from "@/features/gmail/components/ApplicationEmailSection";
 import { ReferralTemplateButton } from "@/features/applications/components/ReferralTemplateButton";
 import { LinkedInSearchButton } from "@/features/applications/components/LinkedInSearchButton";
@@ -38,15 +39,17 @@ export default async function ApplicationDetailPage({ params }: PageProps) {
   const { id } = await params;
   const session = await auth();
   const isPro = await isProUser(session!.user.email ?? "");
-  const [application, emailActivities, gmail] = await Promise.all([
+  const [application, emailActivities, gmail, savedResumes] = await Promise.all([
     getApplicationById(id, session!.user.id),
     isPro ? getEmailActivitiesForApplication(id) : Promise.resolve([]),
     isPro ? getGmailConnectionStatus(session!.user.id) : Promise.resolve(null),
+    getUserResumes(session!.user.id),
   ]);
 
   if (!application) notFound();
 
-  const isUploadAllowed = isPro;
+  const resumeLimit = isPro ? RESUME_LIMITS.pro : RESUME_LIMITS.free;
+  const selectedResume = savedResumes.find((r) => r.id === application.resumeId) ?? null;
   const hasNotes = !!application.notes;
   const hasFeedback = !!application.interviewFeedback;
 
@@ -98,6 +101,8 @@ export default async function ApplicationDetailPage({ params }: PageProps) {
             company={application.company}
             position={application.position}
             jobLink={application.jobLink}
+            resumeName={selectedResume?.name}
+            resumeLink={selectedResume?.link}
           />
           <Link
             href={`/applications/${id}/edit`}
@@ -142,7 +147,9 @@ export default async function ApplicationDetailPage({ params }: PageProps) {
                 resumeFileName={application.resumeFileName}
                 resumeFilePath={application.resumeFilePath}
                 resumeUploadDate={application.resumeUploadDate ? new Date(application.resumeUploadDate) : null}
-                isUploadAllowed={isUploadAllowed}
+                savedResumes={savedResumes}
+                selectedResumeId={application.resumeId}
+                resumeLimit={resumeLimit}
               />
             </div>
           </CardContent>
