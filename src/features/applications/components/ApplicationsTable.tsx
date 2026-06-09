@@ -134,7 +134,7 @@ export function ApplicationsTable({ applications }: ApplicationsTableProps) {
                     <span className="text-muted-foreground">—</span>
                   )}
                 </TableCell>
-                <TableCell className="hidden lg:table-cell text-muted-foreground">{app.location ?? "—"}</TableCell>
+                {/* <TableCell className="hidden lg:table-cell text-muted-foreground">{app.location ?? "—"}</TableCell> */}
                 <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
                   {formatDate(app.appliedDate)}
                 </TableCell>
