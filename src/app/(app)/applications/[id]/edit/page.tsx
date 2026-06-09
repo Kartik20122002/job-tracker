@@ -69,9 +69,6 @@ export default async function EditApplicationPage({ params }: PageProps) {
           notes: application.notes ?? undefined,
           interviewFeedback: application.interviewFeedback ?? undefined,
         }}
-        resumeFileName={application.resumeFileName}
-        resumeFilePath={application.resumeFilePath}
-        resumeUploadDate={application.resumeUploadDate ? new Date(application.resumeUploadDate) : null}
         savedResumes={savedResumes}
         selectedResumeId={application.resumeId}
         resumeLimit={resumeLimit}

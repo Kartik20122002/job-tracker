@@ -203,28 +203,3 @@ export async function updateApplicationResumeLink(
   return { success: true };
 }
 
-export async function updateApplicationResume(
-  id: string,
-  resumeFileName: string,
-  resumeFilePath: string
-): Promise<ActionResult> {
-  const userId = await requireAuth();
-
-  const { data: existing } = await supabaseAdmin
-    .from("Application")
-    .select("id")
-    .eq("id", id)
-    .eq("userId", userId)
-    .single();
-  if (!existing) return { success: false, error: "Application not found" };
-
-  const { error } = await supabaseAdmin
-    .from("Application")
-    .update({ resumeFileName, resumeFilePath, resumeUploadDate: new Date().toISOString() })
-    .eq("id", id);
-
-  if (error) return { success: false, error: "Failed to update resume" };
-
-  revalidatePath(`/applications/${id}`);
-  return { success: true };
-}

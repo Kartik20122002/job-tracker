@@ -144,9 +144,6 @@ export default async function ApplicationDetailPage({ params }: PageProps) {
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Resume</p>
               <ResumeSection
                 applicationId={id}
-                resumeFileName={application.resumeFileName}
-                resumeFilePath={application.resumeFilePath}
-                resumeUploadDate={application.resumeUploadDate ? new Date(application.resumeUploadDate) : null}
                 savedResumes={savedResumes}
                 selectedResumeId={application.resumeId}
                 resumeLimit={resumeLimit}

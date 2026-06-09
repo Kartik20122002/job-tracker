@@ -63,9 +63,6 @@ const COMPANY_TYPE_OPTIONS = [
 interface ApplicationFormProps {
   applicationId?: string;
   defaultValues?: Partial<ApplicationFormValues>;
-  resumeFileName?: string | null;
-  resumeFilePath?: string | null;
-  resumeUploadDate?: Date | null;
   savedResumes?: UserResume[];
   selectedResumeId?: string | null;
   resumeLimit?: number;
@@ -110,9 +107,6 @@ function DatePickerField({
 export function ApplicationForm({
   applicationId,
   defaultValues,
-  resumeFileName,
-  resumeFilePath,
-  resumeUploadDate,
   savedResumes = [],
   selectedResumeId,
   resumeLimit = 5,
@@ -544,9 +538,6 @@ export function ApplicationForm({
                   <CardContent>
                     <ResumeSection
                       applicationId={applicationId}
-                      resumeFileName={resumeFileName}
-                      resumeFilePath={resumeFilePath}
-                      resumeUploadDate={resumeUploadDate}
                       savedResumes={savedResumes}
                       selectedResumeId={selectedResumeId}
                       resumeLimit={resumeLimit}

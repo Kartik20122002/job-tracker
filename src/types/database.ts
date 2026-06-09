@@ -43,9 +43,6 @@ export type Application = {
   recruiterLinkedIn: string | null;
   notes: string | null;
   interviewFeedback: string | null;
-  resumeFileName: string | null;
-  resumeFilePath: string | null;
-  resumeUploadDate: string | null;
   resumeId: string | null;
   createdAt: string;
   updatedAt: string;
