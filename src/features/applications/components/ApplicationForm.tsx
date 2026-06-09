@@ -123,7 +123,7 @@ export function ApplicationForm({
       jobLink: "",
       companyType: "",
       source: ApplicationSource.Other,
-      status: ApplicationStatus.Applied,
+      status: ApplicationStatus.Started,
       applicationType: ApplicationType.Onsite,
       visaSponsorship: false,
       relocation: false,

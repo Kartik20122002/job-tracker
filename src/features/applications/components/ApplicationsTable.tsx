@@ -3,9 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Copy, ExternalLink, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Clock, Copy, ExternalLink, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { ApplicationStatus } from "@/lib/enums";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,8 +27,12 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/StatusBadge";
 import { deleteApplication, duplicateApplication } from "@/server/actions/applications";
-import { formatDate } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import type { Application } from "@/types/database";
+
+function daysSince(dateStr: string): number {
+  return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
+}
 
 interface ApplicationsTableProps {
   applications: Application[];
@@ -89,17 +94,27 @@ export function ApplicationsTable({ applications }: ApplicationsTableProps) {
               <TableHead>Company</TableHead>
               <TableHead>Position</TableHead>
               <TableHead className="hidden md:table-cell">Job Link</TableHead>
-              <TableHead className="hidden lg:table-cell">Location</TableHead>
+              {/* <TableHead className="hidden lg:table-cell">Location</TableHead> */}
               <TableHead className="hidden sm:table-cell">Applied</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="w-10"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {applications.map((app) => (
+            {applications.map((app) => {
+              const isWaitingStatus =
+                app.status === ApplicationStatus.Started ||
+                app.status === ApplicationStatus.Referral_Asked;
+              const staleDays = isWaitingStatus ? daysSince(app.createdAt) : 0;
+              const isStaleReferral = staleDays > 1;
+
+              return (
               <TableRow
                 key={app.id}
-                className="cursor-pointer hover:bg-muted/50"
+                className={cn(
+                  "cursor-pointer hover:bg-muted/50",
+                  isStaleReferral && "border-l-2 border-l-amber-400 bg-amber-50/40 dark:bg-amber-950/20 hover:bg-amber-50/60 dark:hover:bg-amber-950/30"
+                )}
                 onClick={() => router.push(`/applications/${app.id}`)}
               >
                 <TableCell className="font-medium">{app.company}</TableCell>
@@ -124,7 +139,17 @@ export function ApplicationsTable({ applications }: ApplicationsTableProps) {
                   {formatDate(app.appliedDate)}
                 </TableCell>
                 <TableCell>
-                  <StatusBadge status={app.status} />
+                  <div className="flex items-center gap-1.5">
+                    <StatusBadge status={app.status} />
+                    {isStaleReferral && (
+                      <span
+                        title={`${app.status === ApplicationStatus.Started ? "Started" : "Referral"} pending for ${staleDays} day${staleDays !== 1 ? "s" : ""} — consider following up`}
+                        className="shrink-0"
+                      >
+                        <Clock className="h-3.5 w-3.5 text-amber-500" />
+                      </span>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   <DropdownMenu>
@@ -159,7 +184,8 @@ export function ApplicationsTable({ applications }: ApplicationsTableProps) {
                   </DropdownMenu>
                 </TableCell>
               </TableRow>
-            ))}
+              );
+            })}
           </TableBody>
         </Table>
       </div>
