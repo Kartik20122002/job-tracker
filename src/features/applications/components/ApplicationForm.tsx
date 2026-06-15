@@ -122,8 +122,8 @@ export function ApplicationForm({
       country: "India",
       location: "",
       jobLink: "",
-      companyType: "",
-      source: ApplicationSource.Other,
+      companyType: "Other",
+      source: ApplicationSource.Company_Website,
       status: ApplicationStatus.Started,
       applicationType: ApplicationType.Onsite,
       visaSponsorship: false,
@@ -332,7 +332,7 @@ export function ApplicationForm({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Target Salary</FormLabel>
-                        <FormControl><Input placeholder="25 LPA" {...field} /></FormControl>
+                        <FormControl><Input placeholder="" {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
