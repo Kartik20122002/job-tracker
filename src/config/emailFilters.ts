@@ -12,6 +12,7 @@ export const FILTERED_SENDERS: string[] = [
   "alerts@indeed.com",
   "noreply@naukri.com",
   "alerts@naukri.com",
+  "updates-noreply@linkedin.com",
 
   " no-reply@accounts.google.com", // google account access mail
 ];
@@ -34,7 +35,7 @@ export const EMAIL_TAGS: EmailTag[] = [
     color: "green",
   },
   {
-    keywords: ["unfortunately", "other candidates", "regret to inform", "not moving forward", "not selected", "we will not", "decided to move forward with other", "not proceed"],
+    keywords: ["unfortunately", "other candidates", "regret to inform", "not moving forward", "not selected", "we will not", "decided to move forward with other", "not proceed", "not align"],
     label: "Possible Rejection",
     color: "red",
   },
@@ -48,7 +49,7 @@ export const EMAIL_TAGS: EmailTag[] = [
     label: "Assessment",
     color: "yellow",
   },
-   {
+  {
     keywords: ["interview", "schedule a call", "next steps", "move forward", "shortlisted", "selected for"],
     label: "Progress",
     color: "blue",
