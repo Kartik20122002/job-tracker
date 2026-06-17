@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { refreshAccessToken, searchGmailMessages, getGmailMessage, GmailApiError } from "@/lib/gmail";
 import { matchEmailToApp, buildMaps } from "@/app/api/gmail/sync/route";
 import { isProUser } from "@/lib/pro-access";
+import { isFilteredSender } from "@/config/emailFilters";
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -51,6 +52,7 @@ export async function POST(request: NextRequest) {
       stubs.map(async (stub) => {
         const parsed = await getGmailMessage(accessToken, stub.id);
         if (!parsed) return null;
+        if (isFilteredSender(parsed.senderEmail)) return null;
         const match = matchEmailToApp(parsed, maps);
         if (!match) return null;
         return {

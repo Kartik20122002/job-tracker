@@ -13,6 +13,7 @@ import { ApplicationStatus } from "@/lib/enums";
 import type { MatchedByValue } from "@/lib/gmail-matcher";
 import type { ParsedEmail } from "@/lib/gmail";
 import { isProUser } from "@/lib/pro-access";
+import { isFilteredSender } from "@/config/emailFilters";
 
 const INACTIVE_STATUSES = [ApplicationStatus.Rejected, ApplicationStatus.Withdrawn];
 
@@ -135,6 +136,7 @@ async function fetchAndMatch(
       batch.map(async (messageId) => {
         const parsed = await getGmailMessage(accessToken, messageId);
         if (!parsed) return;
+        if (isFilteredSender(parsed.senderEmail)) return;
 
         const match = matchEmailToApp(parsed, maps);
         if (!match) return;

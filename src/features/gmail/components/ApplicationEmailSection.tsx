@@ -9,6 +9,8 @@ import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { deleteEmailActivity } from "@/server/actions/gmail";
+import { getEmailTag } from "@/config/emailFilters";
+import { EmailTagBadge } from "./EmailTagBadge";
 import type { EmailActivity } from "@/types/database";
 
 const MATCHED_BY_LABEL: Record<string, string> = {
@@ -114,6 +116,7 @@ export function ApplicationEmailSection({
                 <div className="flex-1 min-w-0 space-y-0.5">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-medium truncate">{activity.subject}</span>
+                    <EmailTagBadge tag={getEmailTag(activity.subject, activity.snippet)} />
                     <Badge variant="secondary" className="text-xs shrink-0">
                       {MATCHED_BY_LABEL[activity.matchedBy] ?? activity.matchedBy}
                     </Badge>

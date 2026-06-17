@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { formatDate, decodeHtmlEntities } from "@/lib/utils";
 import { deleteEmailActivity } from "@/server/actions/gmail";
+import { getEmailTag } from "@/config/emailFilters";
+import { EmailTagBadge } from "./EmailTagBadge";
 import type { EmailActivityWithApplication } from "@/types/database";
 
 interface EmailTrackingListProps {
@@ -52,7 +54,10 @@ export function EmailTrackingList({ emails }: EmailTrackingListProps) {
               {email.senderEmail}
             </span>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{email.subject}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium truncate">{email.subject}</p>
+                <EmailTagBadge tag={getEmailTag(email.subject, email.snippet)} />
+              </div>
               <p className="text-xs text-muted-foreground truncate">{decodeHtmlEntities(email.snippet)}</p>
             </div>
             <span className="shrink-0 text-xs text-primary truncate max-w-30">
