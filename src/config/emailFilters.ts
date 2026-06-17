@@ -14,7 +14,7 @@ export const FILTERED_SENDERS: string[] = [
   "alerts@naukri.com",
   "updates-noreply@linkedin.com",
 
-  " no-reply@accounts.google.com", // google account access mail
+  "no-reply@accounts.google.com", // google account access mail
 ];
 
 // ─── Email Tags ───────────────────────────────────────────────────────────────
